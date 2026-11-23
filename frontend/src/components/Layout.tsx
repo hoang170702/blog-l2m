@@ -32,9 +32,7 @@ export function Layout() {
       <main className="flex-1 py-6">
         <Outlet />
       </main>
-      <footer className="border-t py-6 text-center text-sm text-slate-500">
-        © {year} Blog
-      </footer>
+      <footer className="border-t py-6 text-center text-sm text-slate-500">© {year} Blog</footer>
     </div>
   )
 }
