@@ -1,2 +1,26 @@
+# Workspace
 /plans/
 /.worktrees/
+
+# Dependencies and build output
+node_modules/
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# Environment files (only examples are committed)
+.env
+.env.*
+!.env.example
+!**/.env.example
+!deploy/.env.prod.example
+
+# Runtime data
+backend/uploads/
+*.log
+
+# Editors and OS
+.idea/
+.vscode/
+.DS_Store
