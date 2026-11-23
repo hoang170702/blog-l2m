@@ -15,6 +15,8 @@ export function setupApp(app: NestExpressApplication) {
   app.set('trust proxy', 'loopback, linklocal, uniquelocal');
   app.use(helmet());
   app.use(cookieParser());
+  // Express defaults to 100 kB; post content may be up to 200 000 characters (multi-byte).
+  app.useBodyParser('json', { limit: '1mb' });
   const origins = config
     .get('CORS_ORIGIN', { infer: true })
     .split(',')

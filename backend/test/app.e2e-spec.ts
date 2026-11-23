@@ -320,6 +320,15 @@ describe('Blog API (e2e)', () => {
       expect(comments.body[0]).not.toHaveProperty('status');
     });
 
+    it('accepts long multi-byte posts up to the content limit', async () => {
+      const { token } = await login();
+      await api()
+        .post('/api/admin/posts')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ title: 'Bài dài', content: 'ạ'.repeat(150_000) })
+        .expect(201);
+    });
+
     it('validates input and rejects unknown fields', async () => {
       const { token } = await login();
       await api()
