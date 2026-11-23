@@ -172,6 +172,18 @@ async function count(result: PromiseLike<{ count: number | null; error: Postgres
   return count ?? 0
 }
 
+/**
+ * Removes a cover that no post uses any more (D39). Best effort: Storage RLS only lets the
+ * owner or an admin delete, and a failed clean-up must never fail the save or delete.
+ */
+async function removeImage(path: string | null | undefined) {
+  if (!path) return
+  await supabase.storage
+    .from(POST_IMAGES_BUCKET)
+    .remove([path])
+    .catch(() => undefined)
+}
+
 async function currentUserId(): Promise<string> {
   const { data } = await supabase.auth.getSession()
   const id = data.session?.user.id
@@ -376,19 +388,26 @@ export const adminApi = {
 
   // RLS hides rows the caller may not change, so "no row changed" means "not allowed" (D38).
   async updatePost(id: string, body: PostInput): Promise<AdminPost> {
+    const before = unwrap(
+      await supabase.from('posts').select('cover_image_path').eq('id', id).maybeSingle(),
+    ) as { cover_image_path: string | null } | null
     const rows = unwrap(
       await supabase.from('posts').update(toPostRow(body)).eq('id', id).select('id'),
     ) as unknown[]
     if (rows.length === 0) throw new ApiError(403, 'Chỉ tác giả mới sửa được bài này.')
+    if (before?.cover_image_path !== (body.coverImagePath ?? null)) {
+      await removeImage(before?.cover_image_path)
+    }
     await setPostTags(id, body.tagIds)
     return adminApi.post(id)
   },
 
   async deletePost(id: string): Promise<void> {
     const rows = unwrap(
-      await supabase.from('posts').delete().eq('id', id).select('id'),
-    ) as unknown[]
+      await supabase.from('posts').delete().eq('id', id).select('id, cover_image_path'),
+    ) as { cover_image_path: string | null }[]
     if (rows.length === 0) throw new ApiError(403, 'Bạn không có quyền xoá bài này.')
+    await removeImage(rows[0].cover_image_path)
   },
 
   async createTerm(kind: TermKind, name: string): Promise<Term> {
