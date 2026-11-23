@@ -79,16 +79,21 @@ function PostForm({ id, initial }: { id?: string; initial: PostInput }) {
     setPost((current) => ({ ...current, [key]: value }))
   }
 
-  async function insertImage(file: File) {
-    const { url } = await upload.mutateAsync(file)
-    const textarea = contentRef.current
-    const at = textarea?.selectionStart ?? post.content.length
-    update('content', `${post.content.slice(0, at)}\n![](${url})\n${post.content.slice(at)}`)
+  // Upload errors surface through `upload.error`; the content is read when the upload
+  // finishes so text typed meanwhile is kept.
+  function insertImage(file: File) {
+    upload.mutate(file, {
+      onSuccess: ({ url }) =>
+        setPost((current) => {
+          const at = contentRef.current?.selectionStart ?? current.content.length
+          const content = `${current.content.slice(0, at)}\n![](${url})\n${current.content.slice(at)}`
+          return { ...current, content }
+        }),
+    })
   }
 
-  async function setCover(file: File) {
-    const { url } = await upload.mutateAsync(file)
-    update('coverImageUrl', url)
+  function setCover(file: File) {
+    upload.mutate(file, { onSuccess: ({ url }) => update('coverImageUrl', url) })
   }
 
   function onSubmit(event: FormEvent) {
