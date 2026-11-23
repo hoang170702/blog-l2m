@@ -24,3 +24,6 @@ backend/uploads/
 .idea/
 .vscode/
 .DS_Store
+
+# Local inputs for set-gitlab-vars.sh (real secrets)
+/deploy/vars/
