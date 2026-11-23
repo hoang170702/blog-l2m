@@ -2,18 +2,12 @@ import { Link } from 'react-router'
 import type { PostSummary } from '../api/types'
 import { formatDate } from '../lib/format'
 
-export function PostCard({ post, featured = false }: { post: PostSummary; featured?: boolean }) {
+export function PostCard({ post }: { post: PostSummary }) {
   return (
-    <article
-      className={`card group flex flex-col overflow-hidden transition duration-300 hover:-translate-y-1 hover:shadow-glow ${
-        featured ? 'md:col-span-2 md:flex-row' : ''
-      }`}
-    >
+    <article className="card group flex flex-col overflow-hidden transition duration-300 hover:-translate-y-1 hover:shadow-glow md:flex-row">
       <Link
         to={`/posts/${post.slug}`}
-        className={`block overflow-hidden bg-gradient-to-br from-primary-soft to-secondary-soft ${
-          featured ? 'aspect-video md:aspect-auto md:w-1/2' : 'aspect-video'
-        }`}
+        className="block aspect-video w-full shrink-0 overflow-hidden bg-gradient-to-br from-primary-soft to-secondary-soft md:w-80 md:self-center"
         tabIndex={-1}
         aria-hidden="true"
       >
@@ -30,9 +24,7 @@ export function PostCard({ post, featured = false }: { post: PostSummary; featur
           </span>
         )}
       </Link>
-      <div
-        className={`flex flex-1 flex-col gap-3 p-6 ${featured ? 'md:justify-center md:p-8' : ''}`}
-      >
+      <div className="flex min-w-0 flex-1 flex-col justify-center gap-3 p-6">
         <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-muted">
           {post.category && (
             <Link
@@ -45,9 +37,7 @@ export function PostCard({ post, featured = false }: { post: PostSummary; featur
           <span>{formatDate(post.publishedAt)}</span>
           {post.author && <span>· {post.author.name}</span>}
         </div>
-        <h2
-          className={`font-display font-bold leading-tight ${featured ? 'text-2xl md:text-3xl' : 'text-xl'}`}
-        >
+        <h2 className="font-display text-xl leading-tight font-bold md:text-2xl">
           <Link to={`/posts/${post.slug}`} className="transition hover:text-primary">
             {post.title}
           </Link>

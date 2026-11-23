@@ -57,13 +57,10 @@ export function HomePage({ mode = 'all' }: { mode?: Mode }) {
         <Empty>Chưa có bài viết nào.</Empty>
       ) : (
         <>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {data.items.map((post, index) => (
-              <PostCard
-                key={post.id}
-                post={post}
-                featured={mode === 'all' && page === 1 && index === 0}
-              />
+          {/* One column, newest first; every post gets the same card. */}
+          <div className="mx-auto flex max-w-4xl flex-col gap-6">
+            {data.items.map((post) => (
+              <PostCard key={post.id} post={post} />
             ))}
           </div>
           <Pagination page={data.page} total={data.total} limit={data.limit} onChange={goTo} />
