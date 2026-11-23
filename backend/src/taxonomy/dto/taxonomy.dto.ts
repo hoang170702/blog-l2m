@@ -7,9 +7,10 @@ import {
   MaxLength,
   MinLength,
 } from 'class-validator';
+import { trim } from '../../common/transforms.js';
 
 export class CreateTermDto {
-  @Transform(({ value }) => (typeof value === 'string' ? value.trim() : value))
+  @Transform(trim)
   @IsString()
   @MinLength(1)
   @MaxLength(60)

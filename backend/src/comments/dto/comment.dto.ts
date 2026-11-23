@@ -7,10 +7,8 @@ import {
   MinLength,
 } from 'class-validator';
 import { PaginationQuery } from '../../common/pagination.js';
+import { trim } from '../../common/transforms.js';
 import { CommentStatus } from '../../generated/prisma/enums.js';
-
-const trim = ({ value }: { value: unknown }) =>
-  typeof value === 'string' ? value.trim() : value;
 
 export class CreateCommentDto {
   @Transform(trim)

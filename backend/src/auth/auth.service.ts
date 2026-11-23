@@ -6,6 +6,7 @@ import { randomUUID } from 'node:crypto';
 import type { Redis } from 'ioredis';
 import type { AppEnv } from '../config/env.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { deleteByPattern } from '../redis/delete-by-pattern.js';
 import { REDIS } from '../redis/redis.module.js';
 import type { AccessPayload, AuthUser, RefreshPayload } from './auth.types.js';
 
@@ -119,16 +120,8 @@ export class AuthService {
     }
   }
 
-  private async revokeAll(userId: string) {
-    const stream = this.redis.scanStream({
-      match: refreshKey(userId, '*'),
-      count: 100,
-    });
-    for await (const keys of stream) {
-      if ((keys as string[]).length > 0) {
-        await this.redis.del(...(keys as string[]));
-      }
-    }
+  private revokeAll(userId: string) {
+    return deleteByPattern(this.redis, refreshKey(userId, '*'));
   }
 }
 

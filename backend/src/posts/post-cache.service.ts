@@ -1,6 +1,7 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { createHash } from 'node:crypto';
 import type { Redis } from 'ioredis';
+import { deleteByPattern } from '../redis/delete-by-pattern.js';
 import { REDIS } from '../redis/redis.module.js';
 
 const PREFIX = 'cache:posts:';
@@ -47,12 +48,7 @@ export class PostCacheService {
     return value;
   }
 
-  async invalidateAll() {
-    const stream = this.redis.scanStream({ match: `${PREFIX}*`, count: 200 });
-    for await (const keys of stream) {
-      if ((keys as string[]).length > 0) {
-        await this.redis.unlink(...(keys as string[]));
-      }
-    }
+  invalidateAll() {
+    return deleteByPattern(this.redis, `${PREFIX}*`);
   }
 }
