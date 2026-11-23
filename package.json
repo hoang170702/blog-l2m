@@ -1,0 +1,17 @@
+{
+  "name": "l2m-blog-db",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:reset": "supabase db reset",
+    "db:test": "supabase test db",
+    "db:test:embedded": "node scripts/test-db-embedded.mjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "^0.5.17",
+    "@electric-sql/pglite-pgtap": "^0.0.18",
+    "supabase": "^3.2.0"
+  }
+}
