@@ -348,9 +348,11 @@ email_optional = false
 
 # OAuth sign-in (R3). Values come from supabase/.env (see supabase/.env.example); never commit them.
 # Callback to register with the provider: http://127.0.0.1:54321/auth/v1/callback (local).
-# Set `enabled = true` once the client ID and secret are in supabase/.env, then restart the stack.
+# Google is on in every environment (D35). The CLI accepts this config with an empty supabase/.env;
+# the Google button only works once the client ID and secret are set and the stack is restarted.
+# GitHub: set `enabled = true` once its app exists.
 [auth.external.google]
-enabled = false
+enabled = true
 client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
 secret = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_SECRET)"
 redirect_uri = ""
