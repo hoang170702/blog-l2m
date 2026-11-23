@@ -1,7 +1,7 @@
 -- Function exposure, guest comments, slugs and publishing.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(16);
+select plan(21);
 
 -- Start from an empty content set (seed data is removed inside this rolled-back transaction).
 delete from public.comments; delete from public.post_tags; delete from public.posts;
@@ -67,6 +67,25 @@ update public.posts set status = 'draft' where slug = 'cong-nghe-da-lat';
 update public.posts set status = 'published' where slug = 'cong-nghe-da-lat';
 select is((select published_at::text from public.posts where slug = 'cong-nghe-da-lat'),
   current_setting('test.first_published'), 'published_at keeps the first publish time');
+
+-- Accent-folding search (D40)
+insert into public.posts (title, excerpt, content, status)
+  values ('Học LẬP TRÌNH', 'Đà Nẵng', 'Nội dung về Ưu tiên', 'published');
+select is((select search_text from public.posts where title = 'Học LẬP TRÌNH'),
+  'hoc lap trinh da nang noi dung ve uu tien', 'search text folds case and Vietnamese accents');
+update public.posts set content = 'Phở bò' where title = 'Học LẬP TRÌNH';
+select ok((select search_text like '%pho bo%' from public.posts where title = 'Học LẬP TRÌNH'),
+  'search text follows content edits');
+select set_config('role', 'anon', true);
+select is((select count(*) from public.posts where search_text ilike '%lap trinh%'), 1::bigint,
+  'anon finds a post by its unaccented title');
+select is((select count(*) from public.posts where search_text ilike '%pho bo%'), 1::bigint,
+  'anon finds a post by its unaccented content');
+reset role;
+
+-- frontend/src/lib/fold.test.ts checks foldVi() on the same string.
+select is(private.fold_vi('àáảãạăằắẳẵặâầấẩẫậèéẻẽẹêềếểễệìíỉĩịòóỏõọôồốổỗộơờớởỡợùúủũụưừứửữựỳýỷỹỵđÀÁẢÃẠĂẰẮẲẴẶÂẦẤẨẪẬÈÉẺẼẸÊỀẾỂỄỆÌÍỈĨỊÒÓỎÕỌÔỒỐỔỖỘƠỜỚỞỠỢÙÚỦŨỤƯỪỨỬỮỰỲÝỶỸỴĐ'),
+  'aaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyydaaaaaaaaaaaaaaaaaeeeeeeeeeeeiiiiiooooooooooooooooouuuuuuuuuuuyyyyyd', 'fold_vi maps every Vietnamese letter like the client');
 
 -- Open sign-up: the allowlist hook is gone
 select is((select count(*) from pg_proc where proname = 'hook_before_user_created'), 0::bigint,

@@ -3,6 +3,7 @@
  * supabase/migrations); these functions only shape queries and map rows to UI types.
  */
 import type { PostgrestError } from '@supabase/supabase-js'
+import { foldVi } from '../lib/fold'
 import { prepareImage } from '../lib/image'
 import { POST_IMAGES_BUCKET, postImageUrl, supabase } from '../lib/supabase'
 import { ApiError, toApiError, unwrap } from './client'
@@ -232,7 +233,8 @@ export const publicApi = {
         links.map((link) => link.post_id),
       )
     }
-    if (q?.trim()) query = query.ilike('title', `%${escapeLike(q.trim())}%`)
+    // Title, excerpt and content, ignoring case and accents (D40).
+    if (q?.trim()) query = query.ilike('search_text', `%${escapeLike(foldVi(q.trim()))}%`)
 
     const result = await query.order('published_at', { ascending: false }).range(...range(page))
     return toPage(result, page, toSummary)
