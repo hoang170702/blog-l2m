@@ -1,6 +1,6 @@
 # AGENTS.md — backend
 
-NestJS 12 API for the blog. Read the root README for the overall architecture.
+NestJS API for the blog. Read the root README for the overall architecture.
 
 ## Conventions
 
@@ -10,7 +10,7 @@ NestJS 12 API for the blog. Read the root README for the overall architecture.
 - Validation uses `class-validator` DTOs with the global `ValidationPipe` (`whitelist` + `forbidNonWhitelisted`).
 - Admin routes use `AdminGuard`; public routes need no guard. Rate limits come from `@nestjs/throttler` backed by Redis.
 
-## Prisma 7
+## Prisma
 
 - Schema: `prisma/schema.prisma`; generated client: `src/generated/prisma` (git-ignored, run `npx prisma generate`).
 - Connection URLs are not in the schema: the CLI reads `DIRECT_URL` from `prisma.config.ts`; the app connects through `@prisma/adapter-pg` with `DATABASE_URL`. On Supabase, `DATABASE_URL` is the transaction pooler and `DIRECT_URL` the session pooler.
