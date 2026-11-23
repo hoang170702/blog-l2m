@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Link, useParams } from 'react-router'
 import { ApiError } from '../api/client'
 import { publicApi } from '../api/endpoints'
+import { useAuth } from '../auth/AuthContext'
 import { Markdown } from '../components/Markdown'
 import { TagList } from '../components/PostCard'
 import { Avatar } from '../components/UserMenu'
@@ -13,6 +14,7 @@ import { NotFoundPage } from './NotFoundPage'
 
 export function PostPage() {
   const { slug = '' } = useParams()
+  const { user } = useAuth()
   const {
     data: post,
     error,
@@ -43,6 +45,11 @@ export function PostPage() {
             </Link>
           )}
           <span>{formatDate(post.publishedAt)}</span>
+          {user && post.author?.id === user.id && (
+            <Link to={`/write/${post.id}`} className="ml-auto text-primary hover:underline">
+              ✎ Sửa bài
+            </Link>
+          )}
         </div>
         <h1 className="mt-4 text-4xl leading-tight font-extrabold md:text-5xl">{post.title}</h1>
         {post.excerpt && <p className="mt-4 text-lg text-muted">{post.excerpt}</p>}

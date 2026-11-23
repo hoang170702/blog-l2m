@@ -12,7 +12,8 @@ import { adminApi, publicApi } from '../../api/endpoints'
 import type { AdminPost, PostInput, PostStatus } from '../../api/types'
 import { MarkdownToolbar } from '../../components/MarkdownToolbar'
 import { Markdown } from '../../components/Markdown'
-import { ErrorMessage, Spinner } from '../../components/Status'
+import { useAuth } from '../../auth/AuthContext'
+import { Empty, ErrorMessage, Spinner } from '../../components/Status'
 import { applyAction, shortcuts } from '../../lib/markdownEdit'
 import { postImageUrl } from '../../lib/supabase'
 import { useDocumentTitle } from '../../lib/useDocumentTitle'
@@ -49,6 +50,7 @@ function imageFiles(list: FileList | null | undefined) {
 
 export function PostEditorPage() {
   const { id } = useParams()
+  const { user } = useAuth()
   const existing = useQuery({
     queryKey: ['admin-post', id],
     queryFn: () => adminApi.post(id!),
@@ -58,6 +60,10 @@ export function PostEditorPage() {
 
   if (id && existing.isPending) return <Spinner />
   if (existing.error) return <ErrorMessage error={existing.error} />
+  // Only the author edits a post (D38); admins see others' posts here but cannot change them.
+  if (existing.data && existing.data.authorId !== user?.id) {
+    return <Empty>Bạn không có quyền sửa bài này. Chỉ tác giả mới sửa được.</Empty>
+  }
 
   const initial = existing.data ? toInput(existing.data) : emptyPost
   return (

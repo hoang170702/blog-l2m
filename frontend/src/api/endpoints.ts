@@ -374,14 +374,21 @@ export const adminApi = {
     return adminApi.post(id)
   },
 
+  // RLS hides rows the caller may not change, so "no row changed" means "not allowed" (D38).
   async updatePost(id: string, body: PostInput): Promise<AdminPost> {
-    unwrap(await supabase.from('posts').update(toPostRow(body)).eq('id', id))
+    const rows = unwrap(
+      await supabase.from('posts').update(toPostRow(body)).eq('id', id).select('id'),
+    ) as unknown[]
+    if (rows.length === 0) throw new ApiError(403, 'Chỉ tác giả mới sửa được bài này.')
     await setPostTags(id, body.tagIds)
     return adminApi.post(id)
   },
 
   async deletePost(id: string): Promise<void> {
-    unwrap(await supabase.from('posts').delete().eq('id', id))
+    const rows = unwrap(
+      await supabase.from('posts').delete().eq('id', id).select('id'),
+    ) as unknown[]
+    if (rows.length === 0) throw new ApiError(403, 'Bạn không có quyền xoá bài này.')
   },
 
   async createTerm(kind: TermKind, name: string): Promise<Term> {

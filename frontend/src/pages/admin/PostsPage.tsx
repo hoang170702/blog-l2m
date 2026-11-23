@@ -111,9 +111,13 @@ export function PostsPage() {
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <Link to={`/write/${post.id}`} className="font-bold hover:text-primary">
-                    {post.title}
-                  </Link>
+                  {post.authorId === user?.id ? (
+                    <Link to={`/write/${post.id}`} className="font-bold hover:text-primary">
+                      {post.title}
+                    </Link>
+                  ) : (
+                    <span className="font-bold">{post.title}</span>
+                  )}
                   <p className="mt-1 text-xs text-muted">
                     {all && post.author && <>{post.author.name} · </>}
                     Cập nhật {formatDate(post.updatedAt)}
@@ -127,9 +131,11 @@ export function PostsPage() {
                       Xem
                     </Link>
                   )}
-                  <Link to={`/write/${post.id}`} className="text-primary hover:underline">
-                    Sửa
-                  </Link>
+                  {post.authorId === user?.id && (
+                    <Link to={`/write/${post.id}`} className="text-primary hover:underline">
+                      Sửa
+                    </Link>
+                  )}
                   <button
                     className="text-red-600 hover:underline"
                     onClick={() => {

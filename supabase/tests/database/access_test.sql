@@ -1,7 +1,7 @@
 -- Row-level security: what signed-out visitors, authors and admins can do (revision R3).
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(24);
+select plan(27);
 
 -- Start from an empty content set (seed data is removed inside this rolled-back transaction).
 delete from public.comments; delete from public.post_tags; delete from public.posts;
@@ -76,15 +76,23 @@ select is((select count(*) from public.comments where post_id = 'aaaaaaaa-3333-4
 -- Admin
 select pg_temp.as_user('11111111-1111-4111-8111-111111111111');
 select is((select count(*) from public.posts), 3::bigint, 'admin sees drafts too');
-select lives_ok($$update public.posts set title = 'Edited by admin' where id = 'aaaaaaaa-3333-4333-8333-333333333333'$$,
-  'admin edits any post');
+update public.posts set title = 'Edited by admin' where id = 'aaaaaaaa-3333-4333-8333-333333333333';
+select throws_ok($$insert into public.post_tags (post_id, tag_id)
+  values ('aaaaaaaa-1111-4111-8111-111111111111', 'dddddddd-1111-4111-8111-111111111111')$$, '42501', null,
+  'admin cannot tag someone else''s post');
+select lives_ok($$delete from public.posts where id = 'aaaaaaaa-2222-4222-8222-222222222222'$$,
+  'admin deletes someone else''s post');
 select is(public.get_my_admin_status(), true, 'admin is reported as admin');
 
 reset role;
 select is((select title from public.posts where id = 'aaaaaaaa-1111-4111-8111-111111111111'), 'Published post',
   'writer could not edit someone else''s post');
-select is((select author_id::text from public.posts where id = 'aaaaaaaa-3333-4333-8333-333333333333'),
-  '22222222-2222-4222-8222-222222222222', 'admin edits keep the original author');
+select is((select title from public.posts where id = 'aaaaaaaa-3333-4333-8333-333333333333'), 'My post',
+  'admin could not edit someone else''s post');
+select is((select count(*) from public.posts where id = 'aaaaaaaa-2222-4222-8222-222222222222'), 0::bigint,
+  'the admin''s delete went through');
+select is((select count(*) from public.post_tags where post_id = 'aaaaaaaa-3333-4333-8333-333333333333'), 1::bigint,
+  'the author''s tag is untouched');
 
 select * from finish();
 rollback;
