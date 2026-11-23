@@ -16,7 +16,6 @@ coverage/
 !deploy/.env.prod.example
 
 # Runtime data
-backend/uploads/
 *.log
 
 # Editors and OS
