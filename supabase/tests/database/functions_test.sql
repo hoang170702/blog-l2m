@@ -1,0 +1,79 @@
+-- Function exposure, guest comments, slugs, publishing and the sign-up hook.
+begin;
+create extension if not exists pgtap with schema extensions;
+select plan(17);
+
+-- Start from an empty content set (seed data is removed inside this rolled-back transaction).
+delete from public.comments; delete from public.post_tags; delete from public.posts;
+
+-- Only intended RPCs are callable through the API.
+select is(
+  (select array_agg(p.proname::text order by p.proname) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.prokind = 'f'
+      and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')
+      and has_function_privilege('anon', p.oid, 'execute')),
+  array['submit_comment'],
+  'signed-out callers can execute only submit_comment'
+);
+select is(
+  (select array_agg(p.proname::text order by p.proname) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    where n.nspname = 'public' and p.prokind = 'f'
+      and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')
+      and has_function_privilege('authenticated', p.oid, 'execute')),
+  array['get_my_admin_status', 'submit_comment'],
+  'signed-in callers can execute only the two app RPCs'
+);
+
+insert into public.posts (title, content, status) values ('Open post', 'x', 'published');
+insert into public.posts (title, content, status) values ('Hidden draft', 'x', 'draft');
+
+select set_config('role', 'anon', true);
+select set_config('request.headers', '{"x-forwarded-for":"203.0.113.7, 10.0.0.1"}', true);
+
+select isnt(public.submit_comment('open-post', '  Lan  ', '  Hay quá  '), null, 'guest comment accepted');
+reset role;
+select results_eq($$select author_name, content, status::text from public.comments$$,
+  $$values ('Lan', 'Hay quá', 'pending')$$, 'comment is trimmed and held for moderation');
+select set_config('role', 'anon', true);
+
+select throws_ok($$select public.submit_comment('open-post', '   ', 'x')$$, '22023', null, 'empty name rejected');
+select throws_ok($$select public.submit_comment('open-post', 'A', repeat('x', 2001))$$, '22023', null,
+  'overlong comment rejected');
+select throws_ok($$select public.submit_comment('hidden-draft', 'A', 'x')$$, 'P0002', null,
+  'comments on drafts rejected');
+
+select lives_ok($$select public.submit_comment('open-post', 'A', 'two')$$, 'second comment from the same client');
+select lives_ok($$select public.submit_comment('open-post', 'A', 'three')$$, 'third comment from the same client');
+select throws_ok($$select public.submit_comment('open-post', 'A', 'four')$$, 'P0429', null,
+  'fourth comment within a minute is rate limited');
+select set_config('request.headers', '{"x-forwarded-for":"198.51.100.9"}', true);
+select lives_ok($$select public.submit_comment('open-post', 'B', 'other client')$$,
+  'another client is not affected');
+reset role;
+
+-- Slugs and publishing
+insert into public.posts (title, content) values ('Công nghệ Đà Lạt', 'x');
+select is((select slug from public.posts where title = 'Công nghệ Đà Lạt'), 'cong-nghe-da-lat',
+  'Vietnamese titles become ASCII slugs');
+insert into public.posts (title, content) values ('Công nghệ Đà Lạt', 'y');
+select is((select count(*) from public.posts where slug = 'cong-nghe-da-lat-2'), 1::bigint,
+  'duplicate titles get a numeric suffix');
+insert into public.tags (name) values ('🚀');
+select is((select slug from public.tags where name = '🚀'), 'item', 'names without letters fall back to item');
+
+update public.posts set status = 'published' where slug = 'cong-nghe-da-lat';
+select set_config('test.first_published', (select published_at::text from public.posts where slug = 'cong-nghe-da-lat'), true);
+update public.posts set status = 'draft' where slug = 'cong-nghe-da-lat';
+update public.posts set status = 'published' where slug = 'cong-nghe-da-lat';
+select is((select published_at::text from public.posts where slug = 'cong-nghe-da-lat'),
+  current_setting('test.first_published'), 'published_at keeps the first publish time');
+
+-- Sign-up hook
+insert into private.account_allowlist (email) values ('owner@test.local');
+select is(public.hook_before_user_created('{"user":{"email":"Owner@Test.local"}}') -> 'error', null,
+  'allowlisted email may get an account');
+select is((public.hook_before_user_created('{"user":{"email":"stranger@test.local"}}') -> 'error' ->> 'http_code')::int,
+  403, 'other emails are rejected');
+
+select * from finish();
+rollback;
