@@ -1,0 +1,100 @@
+# One application environment (UAT or PROD) on the shared server.
+# The deploy job renders `.env` next to this file; COMPOSE_PROJECT_NAME (blog-uat / blog-prod)
+# keeps containers, networks and volumes of each environment apart.
+# Requires the edge proxy stack (deploy/edge) and its external `edge` network.
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: '5'
+
+services:
+  backend:
+    image: ${REGISTRY_IMAGE:?}/backend:${IMAGE_TAG:?}
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: ${DATABASE_URL:?}
+      DIRECT_URL: ${DIRECT_URL:?}
+      REDIS_URL: redis://:${REDIS_PASSWORD:?}@redis:6379
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:?}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
+    volumes:
+      - uploads:/app/uploads
+    networks: [internal]
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    logging: *logging
+
+  redis:
+    image: redis:7-alpine
+    command: [sh, -c, 'exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"']
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?}
+      REDISCLI_AUTH: ${REDIS_PASSWORD:?}
+    volumes:
+      - redisdata:/data
+    networks: [internal]
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    logging: *logging
+
+  web:
+    image: ${REGISTRY_IMAGE:?}/frontend:${IMAGE_TAG:?}
+    volumes:
+      - uploads:/usr/share/nginx/uploads:ro
+    networks: [internal, edge]
+    depends_on: [backend]
+    # List form so the router names are interpolated per environment.
+    labels:
+      - traefik.enable=true
+      - traefik.docker.network=edge
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME:?}.rule=Host(`${APP_DOMAIN:?}`)
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}.entrypoints=websecure
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}.tls.certresolver=le
+      - traefik.http.routers.${COMPOSE_PROJECT_NAME}.middlewares=${COMPOSE_PROJECT_NAME}-hsts
+      - traefik.http.middlewares.${COMPOSE_PROJECT_NAME}-hsts.headers.stsSeconds=31536000
+      - traefik.http.middlewares.${COMPOSE_PROJECT_NAME}-hsts.headers.stsIncludeSubdomains=true
+      - traefik.http.services.${COMPOSE_PROJECT_NAME}.loadbalancer.server.port=80
+    restart: unless-stopped
+    logging: *logging
+
+  # Interim self-hosted database, only used with COMPOSE_PROFILES=selfhost-db
+  # (point DATABASE_URL/DIRECT_URL at postgres:5432). Production uses Supabase.
+  postgres:
+    image: ${POSTGRES_IMAGE:-postgres:17-alpine}
+    profiles: [selfhost-db]
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-blog}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-}
+      POSTGRES_DB: ${POSTGRES_DB:-blog}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks: [internal]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+    logging: *logging
+
+networks:
+  internal:
+  edge:
+    external: true
+    name: edge
+
+volumes:
+  uploads:
+  redisdata:
+  pgdata:
