@@ -14,7 +14,11 @@ import { Throttle } from '@nestjs/throttler';
 import type { CookieOptions, Request, Response } from 'express';
 import type { AppEnv } from '../config/env.js';
 import { JwtAuthGuard, type AuthedRequest } from './admin.guard.js';
-import { AuthService, REFRESH_TTL_SECONDS } from './auth.service.js';
+import {
+  AuthService,
+  REFRESH_TTL_SECONDS,
+  RefreshRaceException,
+} from './auth.service.js';
 import { LoginDto } from './dto/login.dto.js';
 
 export const REFRESH_COOKIE = 'refresh_token';
@@ -54,7 +58,10 @@ export class AuthController {
       res.cookie(REFRESH_COOKIE, refreshToken, this.cookieOptions());
       return { accessToken };
     } catch (error) {
-      res.clearCookie(REFRESH_COOKIE, this.cookieOptions(false));
+      // In a refresh race the browser already holds the newer cookie; keep it.
+      if (!(error instanceof RefreshRaceException)) {
+        res.clearCookie(REFRESH_COOKIE, this.cookieOptions(false));
+      }
       throw error;
     }
   }

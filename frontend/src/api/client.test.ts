@@ -1,8 +1,23 @@
 import { http, HttpResponse } from 'msw'
 import { server } from '../test/server'
-import { api, ApiError, getAccessToken, setAccessToken } from './client'
+import { api, ApiError, getAccessToken, refreshAccessToken, setAccessToken } from './client'
 
 describe('api client', () => {
+  it('retries a refresh that lost a race with another tab', async () => {
+    let refreshCalls = 0
+    server.use(
+      http.post('*/api/auth/refresh', () =>
+        ++refreshCalls === 1
+          ? HttpResponse.json({ message: 'rotated' }, { status: 401 })
+          : HttpResponse.json({ accessToken: 'from-retry' }),
+      ),
+    )
+
+    await expect(refreshAccessToken()).resolves.toBe('from-retry')
+    expect(refreshCalls).toBe(2)
+    expect(getAccessToken()).toBe('from-retry')
+  })
+
   it('refreshes the access token once on 401 and retries the request', async () => {
     setAccessToken('expired')
     let refreshCalls = 0

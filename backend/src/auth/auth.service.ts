@@ -20,6 +20,29 @@ export interface IssuedTokens {
 
 const refreshKey = (userId: string, jti: string) => `refresh:${userId}:${jti}`;
 
+/**
+ * How long a rotated refresh token is remembered. Two browser tabs refreshing at the
+ * same moment send the same cookie; the slower one must not look like token theft.
+ */
+export const ROTATION_GRACE_SECONDS = 30;
+const ACTIVE = '1';
+const ROTATED = 'rotated';
+
+// Returns the previous state ('1', 'rotated' or nil) and marks an active token as
+// rotated in one step, so two concurrent refreshes cannot both succeed.
+const ROTATE_SCRIPT = `
+local state = redis.call('GET', KEYS[1])
+if state == ARGV[1] then redis.call('SET', KEYS[1], ARGV[2], 'EX', ARGV[3]) end
+return state
+`;
+
+/** The refresh token was rotated moments ago by a concurrent request; the session stays valid. */
+export class RefreshRaceException extends UnauthorizedException {
+  constructor() {
+    super('Refresh token was just rotated by another request');
+  }
+}
+
 @Injectable()
 export class AuthService {
   constructor(
@@ -43,11 +66,24 @@ export class AuthService {
     return { ...tokens, user: toAuthUser(user) };
   }
 
-  /** Rotates a refresh token. Reusing an already-rotated token revokes every session of that user. */
+  /**
+   * Rotates a refresh token. Replaying a token after the rotation grace period revokes
+   * every session of that user; within the grace period the request is only rejected.
+   */
   async refresh(refreshToken: string | undefined) {
     const payload = await this.verifyRefresh(refreshToken);
-    const deleted = await this.redis.del(refreshKey(payload.sub, payload.jti));
-    if (deleted === 0) {
+    const previous = (await this.redis.eval(
+      ROTATE_SCRIPT,
+      1,
+      refreshKey(payload.sub, payload.jti),
+      ACTIVE,
+      ROTATED,
+      ROTATION_GRACE_SECONDS,
+    )) as string | null;
+    if (previous === ROTATED) {
+      throw new RefreshRaceException();
+    }
+    if (previous !== ACTIVE) {
       await this.revokeAll(payload.sub);
       throw new UnauthorizedException('Refresh token is no longer valid');
     }
@@ -98,7 +134,7 @@ export class AuthService {
     ]);
     await this.redis.set(
       refreshKey(userId, jti),
-      '1',
+      ACTIVE,
       'EX',
       REFRESH_TTL_SECONDS,
     );

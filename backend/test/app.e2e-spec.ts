@@ -114,18 +114,38 @@ describe('Blog API (e2e)', () => {
       expect(cookie).toMatch(/SameSite=Strict/);
     });
 
-    it('rotates refresh tokens and revokes all sessions on reuse', async () => {
-      const { cookie } = await login();
-      const rotated = await api()
+    async function rotate(cookie: string) {
+      const res = await api()
         .post('/api/auth/refresh')
         .set('Cookie', cookie)
         .expect(200);
-      expect(rotated.body.accessToken).toEqual(expect.any(String));
-      const newCookie = (
-        [rotated.headers['set-cookie']].flat()[0] as string
-      ).split(';')[0];
+      expect(res.body.accessToken).toEqual(expect.any(String));
+      return ([res.headers['set-cookie']].flat()[0] as string).split(';')[0];
+    }
 
-      // Replaying the old token is treated as theft: it fails and kills the new session too.
+    it('tolerates a concurrent refresh with the same token', async () => {
+      const { cookie } = await login();
+      const newCookie = await rotate(cookie);
+
+      // A second tab refreshing at the same moment: rejected, but nothing is revoked
+      // and the browser's newer cookie is not cleared.
+      const race = await api()
+        .post('/api/auth/refresh')
+        .set('Cookie', cookie)
+        .expect(401);
+      expect(race.headers['set-cookie']).toBeUndefined();
+      await rotate(newCookie);
+    });
+
+    it('revokes every session when an old refresh token is replayed later', async () => {
+      const { cookie } = await login();
+      const newCookie = await rotate(cookie);
+      // Simulate the rotation grace period running out: forget rotated tokens only.
+      for (const key of await redis.keys('refresh:*')) {
+        if ((await redis.get(key)) === 'rotated') await redis.del(key);
+      }
+
+      // Replaying the old token now looks like theft: it fails and kills the live session.
       await api().post('/api/auth/refresh').set('Cookie', cookie).expect(401);
       await api()
         .post('/api/auth/refresh')
@@ -183,6 +203,21 @@ describe('Blog API (e2e)', () => {
   });
 
   describe('content flow', () => {
+    it('generates unique, non-empty slugs for categories and tags', async () => {
+      const { token } = await login();
+      const create = (name: string) =>
+        api()
+          .post('/api/admin/tags')
+          .set('Authorization', `Bearer ${token}`)
+          .send({ name })
+          .expect(201)
+          .then((res) => res.body.slug as string);
+
+      expect(await create('C++')).toBe('c');
+      expect(await create('C#')).toBe('c-2');
+      expect(await create('🚀')).toBe('item');
+    });
+
     it('publishes a post, caches it and moderates comments', async () => {
       const { token } = await login();
       const auth = { Authorization: `Bearer ${token}` };

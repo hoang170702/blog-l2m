@@ -21,15 +21,29 @@ export function getAccessToken() {
   return accessToken
 }
 
+// Another tab may rotate the shared refresh cookie at the same moment; the server then
+// rejects this tab's request without ending the session, and one retry picks up the
+// newer cookie.
+const REFRESH_RETRY_DELAY_MS = 300
+
+async function requestNewAccessToken(): Promise<string | null> {
+  for (let attempt = 0; attempt < 2; attempt++) {
+    if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, REFRESH_RETRY_DELAY_MS))
+    const res = await fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' })
+    if (res.ok) return ((await res.json()) as { accessToken: string }).accessToken
+    if (res.status !== 401) return null
+  }
+  return null
+}
+
 /** Exchanges the refresh cookie for a new access token. Concurrent callers share one request. */
 export function refreshAccessToken(): Promise<string | null> {
-  refreshing ??= fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' })
-    .then(async (res) => {
-      const token = res.ok ? ((await res.json()) as { accessToken: string }).accessToken : null
+  refreshing ??= requestNewAccessToken()
+    .catch(() => null)
+    .then((token) => {
       setAccessToken(token)
       return token
     })
-    .catch(() => null)
     .finally(() => {
       refreshing = null
     })
