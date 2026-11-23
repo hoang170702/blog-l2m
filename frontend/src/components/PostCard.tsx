@@ -35,7 +35,11 @@ export function PostCard({ post }: { post: PostSummary }) {
             </Link>
           )}
           <span>{formatDate(post.publishedAt)}</span>
-          {post.author && <span>· {post.author.name}</span>}
+          {post.author && (
+            <Link to={`/u/${post.author.id}`} className="transition hover:text-primary">
+              · {post.author.name}
+            </Link>
+          )}
         </div>
         <h2 className="font-display text-xl leading-tight font-bold md:text-2xl">
           <Link to={`/posts/${post.slug}`} className="transition hover:text-primary">

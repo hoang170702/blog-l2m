@@ -3,13 +3,14 @@ import { useParams, useSearchParams } from 'react-router'
 import { publicApi } from '../api/endpoints'
 import { Pagination } from '../components/Pagination'
 import { PostCard } from '../components/PostCard'
+import { Avatar } from '../components/UserMenu'
 import { Empty, ErrorMessage, Spinner } from '../components/Status'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 
-type Mode = 'all' | 'category' | 'tag' | 'search'
+type Mode = 'all' | 'category' | 'tag' | 'search' | 'author'
 
 export function HomePage({ mode = 'all' }: { mode?: Mode }) {
-  const { slug } = useParams()
+  const { slug, id } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
   const page = Number(searchParams.get('page') ?? '1') || 1
   const q = mode === 'search' ? (searchParams.get('q') ?? '') : undefined
@@ -17,8 +18,14 @@ export function HomePage({ mode = 'all' }: { mode?: Mode }) {
     page,
     category: mode === 'category' ? slug : undefined,
     tag: mode === 'tag' ? slug : undefined,
+    author: mode === 'author' ? id : undefined,
     q,
   }
+  const author = useQuery({
+    queryKey: ['author', id],
+    queryFn: () => publicApi.author(id!),
+    enabled: mode === 'author' && Boolean(id),
+  })
 
   const { data, error, isPending } = useQuery({
     queryKey: ['posts', filters],
@@ -31,6 +38,7 @@ export function HomePage({ mode = 'all' }: { mode?: Mode }) {
     category: `Chuyên mục: ${data?.items[0]?.category?.name ?? slug}`,
     tag: `Thẻ: #${slug}`,
     search: `Kết quả cho “${q}”`,
+    author: author.data ? `Bài viết của ${author.data.name}` : author.isPending ? '…' : 'Tác giả',
   }
   const heading = headings[mode]
   useDocumentTitle(heading)
@@ -44,7 +52,17 @@ export function HomePage({ mode = 'all' }: { mode?: Mode }) {
 
   return (
     <section>
-      {heading ? (
+      {mode === 'author' && author.data ? (
+        <div className="mb-8 flex items-center gap-4">
+          <Avatar user={author.data} size="h-16 w-16" />
+          <div>
+            <p className="text-sm font-semibold text-muted">Tác giả</p>
+            <h1 className="text-3xl font-extrabold md:text-4xl">{author.data.name}</h1>
+          </div>
+        </div>
+      ) : mode === 'author' && author.isSuccess ? (
+        <h1 className="mb-8 text-3xl font-extrabold md:text-4xl">Không tìm thấy tác giả</h1>
+      ) : heading ? (
         <h1 className="mb-8 text-3xl font-extrabold md:text-4xl">{heading}</h1>
       ) : (
         page === 1 && <Hero />

@@ -58,7 +58,9 @@ export function PostPage() {
             <Avatar user={post.author} size="h-10 w-10" />
             <span className="text-sm">
               <span className="text-muted">Viết bởi </span>
-              <strong>{post.author.name}</strong>
+              <Link to={`/u/${post.author.id}`} className="font-bold hover:text-primary">
+                {post.author.name}
+              </Link>
             </span>
           </div>
         )}

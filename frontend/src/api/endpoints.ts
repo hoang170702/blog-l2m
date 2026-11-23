@@ -27,6 +27,8 @@ import type {
 export type TermKind = 'categories' | 'tags'
 
 const PAGE_SIZE = 10
+// Ids go straight into filters; a malformed one would make PostgREST answer 400 instead of "not found".
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 // ---------------------------------------------------------------------------
 // Rows and mapping
@@ -201,14 +203,18 @@ export const publicApi = {
     page = 1,
     category,
     tag,
+    author,
     q,
   }: {
     page?: number
     category?: string
     tag?: string
+    /** Profile id: only this author's posts (D41). */
+    author?: string
     q?: string
   }): Promise<Page<PostSummary>> {
     const empty: Page<PostSummary> = { items: [], total: 0, page, limit: PAGE_SIZE }
+    if (author !== undefined && !UUID.test(author)) return empty
     // Signed-in users can also read their own drafts through RLS, so public pages filter on status.
     let query = supabase.from('posts').select(SUMMARY, { count: 'exact' }).eq('status', 'published')
 
@@ -233,11 +239,25 @@ export const publicApi = {
         links.map((link) => link.post_id),
       )
     }
+    if (author) query = query.eq('author_id', author)
     // Title, excerpt and content, ignoring case and accents (D40).
     if (q?.trim()) query = query.ilike('search_text', `%${escapeLike(foldVi(q.trim()))}%`)
 
     const result = await query.order('published_at', { ascending: false }).range(...range(page))
     return toPage(result, page, toSummary)
+  },
+
+  /** Public author card for `/u/:id`; null for an unknown or malformed id. */
+  async author(id: string): Promise<Author | null> {
+    if (!UUID.test(id)) return null
+    const row = unwrap(
+      await supabase
+        .from('profiles')
+        .select('id, display_name, avatar_url')
+        .eq('id', id)
+        .maybeSingle(),
+    ) as ProfileRow | null
+    return toAuthor(row)
   },
 
   async post(slug: string): Promise<PostDetail> {
