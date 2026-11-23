@@ -37,9 +37,11 @@ For each environment (UAT, production):
 
 1. Create a project in the region closest to the server; note the database password.
 2. **Connect → ORMs / connection string**:
-   - `DATABASE_URL`: *Transaction pooler* (port `6543`) + `?pgbouncer=true&connection_limit=5&sslmode=require`
+   - `DATABASE_URL`: *Transaction pooler* (port `6543`) + `?uselibpqcompat=true&sslmode=require`
    - `DIRECT_URL`: *Session pooler* (port `5432`) + `?sslmode=require`
 3. URL-encode special characters in the password, and do not use `'`.
+
+`DATABASE_URL` is read by node-postgres, which treats a plain `sslmode=require` as full certificate verification against public CAs and rejects Supabase's own CA (`self-signed certificate in certificate chain`). `uselibpqcompat=true` restores the usual meaning: encrypted, certificate not checked — the same as `DIRECT_URL` for the Prisma CLI. Prisma-engine options such as `pgbouncer=true` or `connection_limit` have no effect on node-postgres. To also verify the server certificate, download the CA from **Database settings → SSL configuration**, make it available in the backend container, and use `?sslmode=verify-full&sslrootcert=/path/to/prod-ca-2021.crt`.
 
 Migrations run on every deploy through `DIRECT_URL` before containers are replaced.
 
