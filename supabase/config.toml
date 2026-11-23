@@ -350,7 +350,7 @@ email_optional = false
 # Callback to register with the provider: http://127.0.0.1:54321/auth/v1/callback (local).
 # Google is on in every environment (D35). The CLI accepts this config with an empty supabase/.env;
 # the Google button only works once the client ID and secret are set and the stack is restarted.
-# GitHub: set `enabled = true` once its app exists.
+# GitHub is on as well (D36); a GitHub OAuth App has one callback URL, so each environment has its own.
 [auth.external.google]
 enabled = true
 client_id = "env(SUPABASE_AUTH_EXTERNAL_GOOGLE_CLIENT_ID)"
@@ -362,7 +362,7 @@ skip_nonce_check = true
 email_optional = false
 
 [auth.external.github]
-enabled = false
+enabled = true
 client_id = "env(SUPABASE_AUTH_EXTERNAL_GITHUB_CLIENT_ID)"
 secret = "env(SUPABASE_AUTH_EXTERNAL_GITHUB_SECRET)"
 redirect_uri = ""
