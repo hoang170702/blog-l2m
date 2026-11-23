@@ -4,6 +4,12 @@ export interface Term {
   slug: string
 }
 
+export interface Author {
+  id: string
+  name: string
+  avatarUrl: string | null
+}
+
 export interface PostSummary {
   id: string
   title: string
@@ -13,6 +19,7 @@ export interface PostSummary {
   publishedAt: string | null
   category: Term | null
   tags: Term[]
+  author: Author | null
 }
 
 export interface PostDetail extends PostSummary {
@@ -22,6 +29,8 @@ export interface PostDetail extends PostSummary {
 export type PostStatus = 'DRAFT' | 'PUBLISHED'
 
 export interface AdminPost extends PostDetail {
+  coverImagePath: string | null
+  authorId: string | null
   status: PostStatus
   createdAt: string
   updatedAt: string
@@ -53,7 +62,18 @@ export interface User {
   id: string
   email: string
   name: string
-  role: string
+  avatarUrl: string | null
+  isAdmin: boolean
+}
+
+export type OAuthProvider = 'google' | 'github'
+
+export interface DashboardStats {
+  posts: number
+  drafts: number
+  pendingComments: number
+  /** Site-wide totals, only for admins. */
+  site: { posts: number; members: number } | null
 }
 
 export interface PostInput {
@@ -61,7 +81,8 @@ export interface PostInput {
   slug?: string
   excerpt?: string
   content: string
-  coverImageUrl?: string
+  /** Object name inside the post-images bucket (`<uuid>.<ext>`). */
+  coverImagePath?: string
   status: PostStatus
   categoryId: string | null
   tagIds: string[]

@@ -4,6 +4,7 @@ import { ApiError } from '../api/client'
 import { publicApi } from '../api/endpoints'
 import { Markdown } from '../components/Markdown'
 import { TagList } from '../components/PostCard'
+import { Avatar } from '../components/UserMenu'
 import { ErrorMessage, Spinner } from '../components/Status'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { formatDate } from '../lib/format'
@@ -45,6 +46,15 @@ export function PostPage() {
         </div>
         <h1 className="mt-4 text-4xl leading-tight font-extrabold md:text-5xl">{post.title}</h1>
         {post.excerpt && <p className="mt-4 text-lg text-muted">{post.excerpt}</p>}
+        {post.author && (
+          <div className="mt-6 flex items-center gap-3">
+            <Avatar user={post.author} size="h-10 w-10" />
+            <span className="text-sm">
+              <span className="text-muted">Viết bởi </span>
+              <strong>{post.author.name}</strong>
+            </span>
+          </div>
+        )}
       </header>
       {post.coverImageUrl && (
         <img

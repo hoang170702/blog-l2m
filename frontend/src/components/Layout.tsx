@@ -1,11 +1,14 @@
 import { useState, type FormEvent } from 'react'
 import { Link, NavLink, Outlet, useNavigate } from 'react-router'
+import { useAuth } from '../auth/AuthContext'
 import { Brand } from './Brand'
+import { UserMenu } from './UserMenu'
 
 const year = new Date().getFullYear()
 
 export function Layout() {
   const navigate = useNavigate()
+  const { user } = useAuth()
   const [q, setQ] = useState('')
 
   function onSearch(event: FormEvent) {
@@ -31,7 +34,17 @@ export function Layout() {
               Trang chủ
             </NavLink>
           </nav>
-          <form onSubmit={onSearch} role="search" className="ml-auto w-full sm:w-72">
+          <div className="order-2 ml-auto flex items-center gap-2 sm:order-3 sm:ml-0">
+            <Link to={user ? '/write' : '/login'} className="btn-primary py-2">
+              ✍️ <span className="hidden sm:inline">Viết bài</span>
+            </Link>
+            <UserMenu />
+          </div>
+          <form
+            onSubmit={onSearch}
+            role="search"
+            className="order-3 w-full sm:order-2 sm:ml-auto sm:w-64"
+          >
             <input
               type="search"
               value={q}

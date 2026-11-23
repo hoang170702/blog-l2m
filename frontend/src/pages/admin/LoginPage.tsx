@@ -1,68 +1,177 @@
-import { useState, type FormEvent } from 'react'
-import { Navigate, useLocation, useNavigate } from 'react-router'
+import { useState, type FormEvent, type ReactNode } from 'react'
+import { Link, Navigate, useLocation } from 'react-router'
+import type { OAuthProvider } from '../../api/types'
 import { useAuth } from '../../auth/AuthContext'
+import { rememberReturnPath } from '../../auth/returnPath'
 import { Brand } from '../../components/Brand'
 import { ErrorMessage } from '../../components/Status'
 import { useDocumentTitle } from '../../lib/useDocumentTitle'
 
+const providers: { id: OAuthProvider; label: string; icon: ReactNode }[] = [
+  {
+    id: 'google',
+    label: 'Tiếp tục với Google',
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true">
+        <path
+          fill="#4285F4"
+          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.27-4.74 3.27-8.1z"
+        />
+        <path
+          fill="#34A853"
+          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A11 11 0 0 0 12 23z"
+        />
+        <path
+          fill="#FBBC05"
+          d="M5.84 14.1A6.6 6.6 0 0 1 5.5 12c0-.73.13-1.44.34-2.1V7.06H2.18A11 11 0 0 0 1 12c0 1.77.43 3.45 1.18 4.94l3.66-2.84z"
+        />
+        <path
+          fill="#EA4335"
+          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15A10.96 10.96 0 0 0 12 1 11 11 0 0 0 2.18 7.06l3.66 2.84C6.71 7.31 9.14 5.38 12 5.38z"
+        />
+      </svg>
+    ),
+  },
+  {
+    id: 'github',
+    label: 'Tiếp tục với GitHub',
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-5 w-5" aria-hidden="true" fill="currentColor">
+        <path d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.53-1.33-1.28-1.69-1.28-1.69-1.05-.72.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.28 1.19-3.09-.12-.29-.52-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.77 0c2.2-1.49 3.17-1.18 3.17-1.18.63 1.59.23 2.76.11 3.05.74.81 1.19 1.83 1.19 3.09 0 4.42-2.7 5.39-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5z" />
+      </svg>
+    ),
+  },
+]
+
+/** Sign-in and sign-up in one place: the first OAuth sign-in creates the account. */
 export function LoginPage() {
   useDocumentTitle('Đăng nhập')
-  const { user, login } = useAuth()
-  const navigate = useNavigate()
+  const { user, signInWithProvider, signInWithPassword } = useAuth()
   const location = useLocation()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showEmail, setShowEmail] = useState(false)
   const [error, setError] = useState<unknown>(null)
-  const [busy, setBusy] = useState(false)
-  const from = (location.state as { from?: string } | null)?.from ?? '/admin/posts'
+  const [busy, setBusy] = useState<string | null>(null)
+  const from = (location.state as { from?: string } | null)?.from ?? '/dashboard'
 
   if (user) return <Navigate to={from} replace />
 
+  async function withProvider(provider: OAuthProvider) {
+    setBusy(provider)
+    setError(null)
+    rememberReturnPath(from)
+    try {
+      await signInWithProvider(provider) // navigates away on success
+    } catch (err) {
+      setError(err)
+      setBusy(null)
+    }
+  }
+
   async function onSubmit(event: FormEvent) {
     event.preventDefault()
-    setBusy(true)
+    setBusy('email')
     setError(null)
     try {
-      await login(email, password)
-      navigate(from, { replace: true })
+      await signInWithPassword(email, password) // <Navigate> above takes over once `user` is set
     } catch (err) {
       setError(err)
     } finally {
-      setBusy(false)
+      setBusy(null)
     }
   }
 
   return (
-    <div className="mx-auto mt-24 max-w-sm px-4">
-      <div className="card p-8 shadow-glow">
-        <Brand />
-        <h1 className="mt-2 mb-6 text-2xl font-bold">Đăng nhập quản trị</h1>
-        <form onSubmit={onSubmit} className="space-y-3">
-          <input
-            type="email"
-            required
-            autoComplete="username"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Email"
-            aria-label="Email"
-            className="input"
-          />
-          <input
-            type="password"
-            required
-            autoComplete="current-password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="Mật khẩu"
-            aria-label="Mật khẩu"
-            className="input"
-          />
-          {error !== null && <ErrorMessage error={error} />}
-          <button type="submit" disabled={busy} className="btn-primary w-full">
-            Đăng nhập
-          </button>
-        </form>
+    <div className="relative min-h-screen overflow-hidden px-4 py-16">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-32 -left-32 h-96 w-96 rounded-full bg-primary/15 blur-3xl"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -right-24 -bottom-40 h-96 w-96 rounded-full bg-secondary/20 blur-3xl"
+      />
+      <div className="relative mx-auto max-w-md">
+        <Link to="/" className="inline-block" aria-label="Về trang chủ">
+          <Brand />
+        </Link>
+        <div className="card mt-6 p-8 shadow-glow">
+          <h1 className="text-2xl font-extrabold">Đăng nhập hoặc đăng ký</h1>
+          <p className="mt-2 text-sm text-muted">
+            Lần đầu đăng nhập sẽ tự tạo tài khoản. Có tài khoản là viết và đăng bài được ngay.
+          </p>
+
+          <div className="mt-6 space-y-3">
+            {providers.map((provider) => (
+              <button
+                key={provider.id}
+                type="button"
+                disabled={busy !== null}
+                onClick={() => void withProvider(provider.id)}
+                className="btn-ghost w-full justify-center py-3"
+              >
+                {provider.icon}
+                {busy === provider.id ? 'Đang chuyển hướng…' : provider.label}
+              </button>
+            ))}
+          </div>
+
+          {error !== null && (
+            <div className="mt-4">
+              <ErrorMessage error={error} />
+            </div>
+          )}
+
+          <div className="my-6 flex items-center gap-3 text-xs text-muted">
+            <span className="h-px flex-1 bg-line" />
+            hoặc
+            <span className="h-px flex-1 bg-line" />
+          </div>
+
+          {showEmail ? (
+            <form onSubmit={onSubmit} className="space-y-3">
+              <input
+                type="email"
+                required
+                autoComplete="username"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="Email"
+                aria-label="Email"
+                className="input"
+              />
+              <input
+                type="password"
+                required
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Mật khẩu"
+                aria-label="Mật khẩu"
+                className="input"
+              />
+              <button type="submit" disabled={busy !== null} className="btn-primary w-full">
+                {busy === 'email' ? 'Đang đăng nhập…' : 'Đăng nhập bằng email'}
+              </button>
+            </form>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowEmail(true)}
+              className="w-full text-center text-sm font-semibold text-muted hover:text-primary"
+            >
+              Đăng nhập bằng email và mật khẩu (tài khoản có sẵn)
+            </button>
+          )}
+        </div>
+        <p className="mt-6 text-center text-sm text-muted">
+          Chỉ muốn đọc?{' '}
+          <Link to="/" className="font-semibold text-primary hover:underline">
+            Xem bài viết
+          </Link>{' '}
+          — không cần tài khoản.
+        </p>
       </div>
     </div>
   )

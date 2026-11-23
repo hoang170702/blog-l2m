@@ -1,4 +1,4 @@
-/** Thin fetch wrapper: JSON in/out, bearer token from memory, one refresh-and-retry on 401. */
+/** Error type shared by the data layer; `status` follows HTTP semantics so pages can branch on 404. */
 
 export class ApiError extends Error {
   readonly status: number
@@ -9,79 +9,32 @@ export class ApiError extends Error {
   }
 }
 
-// The access token lives only in memory; the refresh token is an httpOnly cookie.
-let accessToken: string | null = null
-let refreshing: Promise<string | null> | null = null
-
-export function setAccessToken(token: string | null) {
-  accessToken = token
+interface SupabaseLikeError {
+  code?: string
+  message?: string
+  status?: number
 }
 
-export function getAccessToken() {
-  return accessToken
+// PostgreSQL / PostgREST codes raised by our schema and RPCs (see supabase/migrations).
+const knownErrors: Record<string, [number, string]> = {
+  P0429: [429, 'Bạn gửi quá nhanh, vui lòng thử lại sau một phút.'],
+  P0002: [404, 'Không tìm thấy bài viết.'],
+  '23505': [409, 'Tên hoặc slug đã tồn tại.'],
+  '23514': [400, 'Dữ liệu không hợp lệ.'],
+  '42501': [403, 'Bạn không có quyền thực hiện thao tác này.'],
+  PGRST116: [404, 'Không tìm thấy.'],
 }
 
-// Another tab may rotate the shared refresh cookie at the same moment; the server then
-// rejects this tab's request without ending the session, and one retry picks up the
-// newer cookie.
-const REFRESH_RETRY_DELAY_MS = 300
-
-async function requestNewAccessToken(): Promise<string | null> {
-  for (let attempt = 0; attempt < 2; attempt++) {
-    if (attempt > 0) await new Promise((resolve) => setTimeout(resolve, REFRESH_RETRY_DELAY_MS))
-    const res = await fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' })
-    if (res.ok) return ((await res.json()) as { accessToken: string }).accessToken
-    if (res.status !== 401) return null
-  }
-  return null
+export function toApiError(error: SupabaseLikeError): ApiError {
+  const known = error.code ? knownErrors[error.code] : undefined
+  if (known) return new ApiError(known[0], known[1])
+  // 22023 carries a readable validation message from submit_comment.
+  if (error.code === '22023') return new ApiError(400, error.message ?? 'Dữ liệu không hợp lệ.')
+  return new ApiError(error.status ?? 500, error.message || 'Đã có lỗi xảy ra')
 }
 
-/** Exchanges the refresh cookie for a new access token. Concurrent callers share one request. */
-export function refreshAccessToken(): Promise<string | null> {
-  refreshing ??= requestNewAccessToken()
-    .catch(() => null)
-    .then((token) => {
-      setAccessToken(token)
-      return token
-    })
-    .finally(() => {
-      refreshing = null
-    })
-  return refreshing
-}
-
-interface RequestOptions {
-  method?: string
-  body?: unknown
-  retry?: boolean
-}
-
-export async function api<T>(
-  path: string,
-  { method = 'GET', body, retry = true }: RequestOptions = {},
-): Promise<T> {
-  const headers: Record<string, string> = {}
-  if (accessToken) headers.Authorization = `Bearer ${accessToken}`
-  const isForm = body instanceof FormData
-  if (body !== undefined && !isForm) headers['Content-Type'] = 'application/json'
-
-  const res = await fetch(`/api${path}`, {
-    method,
-    headers,
-    credentials: 'include',
-    body: body === undefined ? undefined : isForm ? body : JSON.stringify(body),
-  })
-
-  if (res.status === 401 && retry && !path.startsWith('/auth/')) {
-    if (await refreshAccessToken()) {
-      return api<T>(path, { method, body, retry: false })
-    }
-  }
-  if (!res.ok) {
-    const data = (await res.json().catch(() => ({}))) as { message?: string | string[] }
-    const message = Array.isArray(data.message) ? data.message.join(', ') : data.message
-    throw new ApiError(res.status, message ?? res.statusText)
-  }
-  if (res.status === 204) return undefined as T
-  return (await res.json()) as T
+/** Unwraps a Supabase response, throwing ApiError on failure. */
+export function unwrap<T>(result: { data: T | null; error: SupabaseLikeError | null }): T {
+  if (result.error) throw toApiError(result.error)
+  return result.data as T
 }

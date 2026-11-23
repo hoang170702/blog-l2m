@@ -43,6 +43,7 @@ export function PostCard({ post, featured = false }: { post: PostSummary; featur
             </Link>
           )}
           <span>{formatDate(post.publishedAt)}</span>
+          {post.author && <span>· {post.author.name}</span>}
         </div>
         <h2
           className={`font-display font-bold leading-tight ${featured ? 'text-2xl md:text-3xl' : 'text-xl'}`}

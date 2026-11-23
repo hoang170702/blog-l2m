@@ -1,47 +1,84 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { adminApi } from '../../api/endpoints'
 import type { PostStatus } from '../../api/types'
+import { useAuth } from '../../auth/AuthContext'
 import { Pagination } from '../../components/Pagination'
 import { Empty, ErrorMessage, Spinner } from '../../components/Status'
 import { useDocumentTitle } from '../../lib/useDocumentTitle'
 import { formatDate } from '../../lib/format'
+import { StatusBadge } from './DashboardPage'
 
 export function PostsPage() {
-  useDocumentTitle('Bài viết')
+  const { user } = useAuth()
   const queryClient = useQueryClient()
-  const [page, setPage] = useState(1)
-  const [status, setStatus] = useState<PostStatus | ''>('')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const page = Number(searchParams.get('page') ?? '1') || 1
+  const status = (searchParams.get('status') ?? '') as PostStatus | ''
+  // Admins may switch to every author's posts; everyone else only ever sees their own.
+  const all = Boolean(user?.isAdmin) && searchParams.get('all') === '1'
+  useDocumentTitle(all ? 'Mọi bài viết' : 'Bài viết của tôi')
+
   const posts = useQuery({
-    queryKey: ['admin-posts', page, status],
-    queryFn: () => adminApi.posts({ page, status: status || undefined }),
+    queryKey: ['admin-posts', page, status, all ? 'all' : user?.id],
+    queryFn: () =>
+      adminApi.posts({ page, status: status || undefined, authorId: all ? undefined : user!.id }),
+    enabled: Boolean(user),
     placeholderData: keepPreviousData,
   })
   const remove = useMutation({
     mutationFn: adminApi.deletePost,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['admin-posts'] }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['admin-posts'] })
+      void queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+    },
   })
+
+  function setParam(key: string, value: string) {
+    const next = new URLSearchParams(searchParams)
+    if (value) next.set(key, value)
+    else next.delete(key)
+    if (key !== 'page') next.delete('page')
+    setSearchParams(next)
+  }
 
   return (
     <section>
-      <div className="mb-4 flex flex-wrap items-center gap-3">
-        <h1 className="flex-1 text-3xl font-extrabold">Bài viết</h1>
+      <div className="mb-6 flex flex-wrap items-center gap-3">
+        <h1 className="flex-1 text-3xl font-extrabold">
+          {all ? 'Mọi bài viết' : 'Bài viết của tôi'}
+        </h1>
+        {user?.isAdmin && (
+          <div className="flex rounded-full border border-line bg-surface p-1 text-sm font-semibold">
+            {[
+              ['', 'Của tôi'],
+              ['1', 'Tất cả'],
+            ].map(([value, label]) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => setParam('all', value)}
+                className={`rounded-full px-3 py-1 transition ${
+                  (value === '1') === all ? 'bg-primary text-white' : 'text-muted hover:text-ink'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        )}
         <select
           value={status}
-          onChange={(e) => {
-            setStatus(e.target.value as PostStatus | '')
-            setPage(1)
-          }}
+          onChange={(e) => setParam('status', e.target.value)}
           aria-label="Lọc trạng thái"
           className="input w-auto py-2 text-sm"
         >
-          <option value="">Tất cả</option>
+          <option value="">Mọi trạng thái</option>
+          <option value="PUBLISHED">Đã đăng</option>
           <option value="DRAFT">Bản nháp</option>
-          <option value="PUBLISHED">Đã xuất bản</option>
         </select>
-        <Link to="/admin/posts/new" className="btn-primary">
-          Viết bài mới
+        <Link to="/write" className="btn-primary">
+          ✍️ Viết bài mới
         </Link>
       </div>
       {remove.isError && <ErrorMessage error={remove.error} />}
@@ -50,52 +87,66 @@ export function PostsPage() {
       ) : posts.error ? (
         <ErrorMessage error={posts.error} />
       ) : posts.data.items.length === 0 ? (
-        <Empty>Chưa có bài viết.</Empty>
+        <Empty>
+          Chưa có bài viết.{' '}
+          <Link to="/write" className="font-semibold text-primary hover:underline">
+            Viết ngay
+          </Link>
+        </Empty>
       ) : (
         <>
-          <div className="card overflow-x-auto px-6 py-2">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b border-line text-muted">
-                <tr>
-                  <th className="py-2">Tiêu đề</th>
-                  <th>Trạng thái</th>
-                  <th>Cập nhật</th>
-                  <th />
-                </tr>
-              </thead>
-              <tbody>
-                {posts.data.items.map((post) => (
-                  <tr key={post.id} className="border-b border-line last:border-0">
-                    <td className="py-2">
-                      <Link
-                        to={`/admin/posts/${post.id}/edit`}
-                        className="font-medium hover:underline"
-                      >
-                        {post.title}
-                      </Link>
-                    </td>
-                    <td>{post.status === 'PUBLISHED' ? 'Đã xuất bản' : 'Bản nháp'}</td>
-                    <td>{formatDate(post.updatedAt)}</td>
-                    <td className="text-right">
-                      <button
-                        className="text-red-600 hover:underline"
-                        onClick={() => {
-                          if (confirm(`Xoá bài “${post.title}”?`)) remove.mutate(post.id)
-                        }}
-                      >
-                        Xoá
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ul className="space-y-3">
+            {posts.data.items.map((post) => (
+              <li
+                key={post.id}
+                className="card flex flex-wrap items-center gap-4 p-4 sm:flex-nowrap"
+              >
+                <div className="h-16 w-24 shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-primary-soft to-secondary-soft">
+                  {post.coverImageUrl ? (
+                    <img src={post.coverImageUrl} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="grid h-full w-full place-items-center font-display text-2xl font-extrabold text-primary/30">
+                      {post.title.charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <Link to={`/write/${post.id}`} className="font-bold hover:text-primary">
+                    {post.title}
+                  </Link>
+                  <p className="mt-1 text-xs text-muted">
+                    {all && post.author && <>{post.author.name} · </>}
+                    Cập nhật {formatDate(post.updatedAt)}
+                    {post.category && <> · {post.category.name}</>}
+                  </p>
+                </div>
+                <StatusBadge published={post.status === 'PUBLISHED'} />
+                <div className="flex gap-3 text-sm font-semibold">
+                  {post.status === 'PUBLISHED' && (
+                    <Link to={`/posts/${post.slug}`} className="text-muted hover:text-primary">
+                      Xem
+                    </Link>
+                  )}
+                  <Link to={`/write/${post.id}`} className="text-primary hover:underline">
+                    Sửa
+                  </Link>
+                  <button
+                    className="text-red-600 hover:underline"
+                    onClick={() => {
+                      if (confirm(`Xoá bài “${post.title}”?`)) remove.mutate(post.id)
+                    }}
+                  >
+                    Xoá
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
           <Pagination
             page={posts.data.page}
             total={posts.data.total}
             limit={posts.data.limit}
-            onChange={setPage}
+            onChange={(next) => setParam('page', String(next))}
           />
         </>
       )}

@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { Link } from 'react-router'
 import { adminApi } from '../../api/endpoints'
 import type { CommentStatus } from '../../api/types'
+import { useAuth } from '../../auth/AuthContext'
 import { Pagination } from '../../components/Pagination'
 import { Empty, ErrorMessage, Spinner } from '../../components/Status'
 import { useDocumentTitle } from '../../lib/useDocumentTitle'
@@ -16,15 +17,22 @@ const statusLabels: Record<CommentStatus, string> = {
 
 export function CommentsPage() {
   useDocumentTitle('Bình luận')
+  const { user } = useAuth()
   const queryClient = useQueryClient()
+  // Authors moderate comments on their own posts; admins see every post's comments.
+  const postAuthorId = user?.isAdmin ? undefined : user?.id
   const [status, setStatus] = useState<CommentStatus | ''>('PENDING')
   const [page, setPage] = useState(1)
   const comments = useQuery({
-    queryKey: ['admin-comments', status, page],
-    queryFn: () => adminApi.comments({ page, status: status || undefined }),
+    queryKey: ['admin-comments', status, page, postAuthorId],
+    queryFn: () => adminApi.comments({ page, status: status || undefined, postAuthorId }),
+    enabled: Boolean(user),
     placeholderData: keepPreviousData,
   })
-  const refresh = () => queryClient.invalidateQueries({ queryKey: ['admin-comments'] })
+  const refresh = () => {
+    void queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+    return queryClient.invalidateQueries({ queryKey: ['admin-comments'] })
+  }
   const moderate = useMutation({
     mutationFn: ({ id, next }: { id: string; next: CommentStatus }) =>
       adminApi.moderateComment(id, next),
@@ -35,7 +43,9 @@ export function CommentsPage() {
   return (
     <section>
       <div className="mb-4 flex items-center gap-3">
-        <h1 className="flex-1 text-3xl font-extrabold">Bình luận</h1>
+        <h1 className="flex-1 text-3xl font-extrabold">
+          {user?.isAdmin ? 'Bình luận' : 'Bình luận trên bài của tôi'}
+        </h1>
         <select
           value={status}
           onChange={(e) => {

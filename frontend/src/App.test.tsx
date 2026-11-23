@@ -15,6 +15,7 @@ const post: PostSummary = {
   publishedAt: '2026-11-23T00:00:00.000Z',
   category: { id: 'c', name: 'General', slug: 'general' },
   tags: [{ id: 't', name: 'Intro', slug: 'intro' }],
+  author: null,
 }
 
 function noSession() {
