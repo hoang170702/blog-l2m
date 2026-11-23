@@ -1,7 +1,7 @@
 # The pipeline lives in the shared CI/CD templates project; bump `ref` to adopt a new template version.
 include:
   - project: NguyenHuyHoang170702/cicd-templates
-    ref: v1.0.0
+    ref: v1.0.1
     file: /templates/fullstack-compose.yml
     inputs:
       uat_project_name: blog-uat
