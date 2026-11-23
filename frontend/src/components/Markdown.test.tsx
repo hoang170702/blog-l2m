@@ -15,4 +15,12 @@ describe('Markdown', () => {
     expect(container.querySelector('img')).toBeNull()
     expect(container.querySelector('a')?.getAttribute('href') ?? '').not.toMatch(/javascript:/)
   })
+
+  it('drops Markdown images because a post shows only its cover', () => {
+    const { container } = render(
+      <Markdown>{'Text\n\n![photo](https://example.com/a.webp)'}</Markdown>,
+    )
+    expect(container).toHaveTextContent('Text')
+    expect(container.querySelector('img')).toBeNull()
+  })
 })

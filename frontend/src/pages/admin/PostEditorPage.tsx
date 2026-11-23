@@ -164,34 +164,18 @@ function PostForm({
     }
   }
 
-  // The content is read when the upload finishes, so text typed meanwhile is kept.
-  async function insertImages(files: File[]) {
-    for (const file of files) {
-      const result = await upload(file)
-      if (!result) continue
-      setPost((current) => {
-        const at = contentRef.current?.selectionStart ?? current.content.length
-        const alt = file.name.replace(/\.[^.]+$/, '').replace(/[[\]]/g, '')
-        const snippet = `\n![${alt}](${result.url})\n`
-        return {
-          ...current,
-          content: current.content.slice(0, at) + snippet + current.content.slice(at),
-        }
-      })
-    }
-  }
-
   async function setCover(file: File) {
     const result = await upload(file)
     if (result) update('coverImagePath', result.path)
   }
 
+  // A post's only image is its cover (D37): an image dropped or pasted on the content replaces it.
   function onContentDrop(event: DragEvent) {
-    const files = imageFiles(event.dataTransfer.files)
+    const file = imageFiles(event.dataTransfer.files)[0]
     setDragging(false)
-    if (files.length === 0) return
+    if (!file) return
     event.preventDefault()
-    void insertImages(files)
+    void setCover(file)
   }
 
   function onContentKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
@@ -272,8 +256,6 @@ function PostForm({
                 <MarkdownToolbar
                   textareaRef={contentRef}
                   onChange={(text) => update('content', text)}
-                  onPickImage={(file) => void insertImages([file])}
-                  uploading={uploads > 0}
                 />
                 <div
                   className="relative flex-1"
@@ -293,21 +275,21 @@ function PostForm({
                     onChange={(e) => update('content', e.target.value)}
                     onKeyDown={onContentKeyDown}
                     onPaste={(e) => {
-                      const files = imageFiles(e.clipboardData.files)
-                      if (files.length > 0) {
+                      const file = imageFiles(e.clipboardData.files)[0]
+                      if (file) {
                         e.preventDefault()
-                        void insertImages(files)
+                        void setCover(file)
                       }
                     }}
                     placeholder={
-                      'Viết nội dung bằng Markdown…\n\nKéo thả hoặc dán ảnh vào đây để chèn.'
+                      'Viết nội dung bằng Markdown…\n\nKéo thả hoặc dán ảnh vào đây để đặt làm ảnh bìa.'
                     }
                     aria-label="Nội dung"
                     className="block h-[60vh] min-h-80 w-full resize-y bg-transparent p-5 font-mono text-sm leading-relaxed outline-none"
                   />
                   {dragging && (
                     <div className="pointer-events-none absolute inset-2 grid place-items-center rounded-2xl border-2 border-dashed border-primary bg-primary-soft/80 font-semibold text-primary-dark">
-                      Thả ảnh để chèn vào bài
+                      Thả ảnh để đặt làm ảnh bìa
                     </div>
                   )}
                 </div>
@@ -336,6 +318,9 @@ function PostForm({
         <aside className="space-y-4">
           <div className="card space-y-3 p-5">
             <p className="text-sm font-bold">Ảnh bìa</p>
+            <p className="text-xs text-muted">
+              Hiện ở trang chủ và đầu bài viết. Ảnh được cắt giữa về khung 16:9.
+            </p>
             <label
               className="group relative block aspect-video cursor-pointer overflow-hidden rounded-2xl border-2 border-dashed border-line bg-canvas transition hover:border-primary"
               onDragOver={(e) => e.preventDefault()}

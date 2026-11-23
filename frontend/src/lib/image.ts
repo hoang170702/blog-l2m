@@ -1,6 +1,8 @@
-/** Client-side image preparation before upload: the bucket caps files at 2 MiB. */
+/** Client-side cover preparation before upload: the bucket caps files at 2 MiB. */
 
-const MAX_DIMENSION = 1600
+// Every cover uses one 16:9 frame (D37): the home card and the top of the post.
+const COVER_WIDTH = 1600
+const COVER_RATIO = 16 / 9
 const MAX_BYTES = 2 * 1024 * 1024
 const QUALITY = 0.85
 const ALLOWED = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
@@ -15,26 +17,44 @@ function toBlob(canvas: HTMLCanvasElement, type: string): Promise<Blob | null> {
   return new Promise((resolve) => canvas.toBlob(resolve, type, QUALITY))
 }
 
-/** Resizes to at most 1600px and re-encodes as WebP (JPEG where WebP encoding is unsupported). */
+/** Source rectangle (centered, 16:9) and output size (never upscaled) for a cover. */
+export function coverCrop(sourceWidth: number, sourceHeight: number) {
+  const sw = Math.min(sourceWidth, Math.round(sourceHeight * COVER_RATIO))
+  const sh = Math.min(sourceHeight, Math.round(sw / COVER_RATIO))
+  const width = Math.min(COVER_WIDTH, sw)
+  return {
+    sx: Math.round((sourceWidth - sw) / 2),
+    sy: Math.round((sourceHeight - sh) / 2),
+    sw,
+    sh,
+    width,
+    height: Math.round(width / COVER_RATIO),
+  }
+}
+
+/**
+ * Center-crops to 16:9, scales down to at most 1600x900 and re-encodes as WebP
+ * (JPEG where WebP encoding is unsupported).
+ */
 export async function prepareImage(file: File): Promise<PreparedImage> {
   if (!ALLOWED.includes(file.type)) {
     throw new Error('Chỉ hỗ trợ ảnh JPEG, PNG, WebP hoặc GIF.')
   }
 
-  // GIFs are kept as-is so animations survive.
+  // GIFs are kept as-is so animations survive; CSS crops them to the frame.
   if (file.type === 'image/gif') {
     if (file.size > MAX_BYTES) throw new Error('Ảnh GIF vượt quá 2 MB.')
     return { blob: file, contentType: 'image/gif', extension: 'gif' }
   }
 
   const bitmap = await createImageBitmap(file)
-  const scale = Math.min(1, MAX_DIMENSION / Math.max(bitmap.width, bitmap.height))
+  const crop = coverCrop(bitmap.width, bitmap.height)
   const canvas = document.createElement('canvas')
-  canvas.width = Math.round(bitmap.width * scale)
-  canvas.height = Math.round(bitmap.height * scale)
+  canvas.width = crop.width
+  canvas.height = crop.height
   const context = canvas.getContext('2d')
   if (!context) throw new Error('Trình duyệt không xử lý được ảnh.')
-  context.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+  context.drawImage(bitmap, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, crop.width, crop.height)
   bitmap.close()
 
   // Browsers without a WebP encoder silently return PNG, so check the result type.
