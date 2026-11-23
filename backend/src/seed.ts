@@ -1,8 +1,11 @@
 import { hash, verify } from '@node-rs/argon2';
 import { PrismaPg } from '@prisma/adapter-pg';
 import 'dotenv/config';
+import { Redis } from 'ioredis';
+import { refreshKey } from './auth/refresh-key.js';
 import { PrismaClient } from './generated/prisma/client.js';
 import { PostStatus } from './generated/prisma/enums.js';
+import { deleteByPattern } from './redis/delete-by-pattern.js';
 
 /**
  * Idempotent seed: ensures the admin account from ADMIN_EMAIL/ADMIN_PASSWORD exists
@@ -37,7 +40,9 @@ async function main() {
           where: { id: existing.id },
           data: { passwordHash: await hash(password) },
         });
-        console.log('seed: admin password updated');
+        // A password change must also end sessions opened with the old password.
+        await revokeSessions(existing.id);
+        console.log('seed: admin password updated, existing sessions revoked');
       }
     }
 
@@ -69,6 +74,24 @@ async function main() {
     }
   } finally {
     await prisma.$disconnect();
+  }
+}
+
+async function revokeSessions(userId: string) {
+  const url = process.env.REDIS_URL;
+  if (!url) {
+    throw new Error('REDIS_URL is required to revoke sessions');
+  }
+  const redis = new Redis(url, {
+    lazyConnect: true,
+    connectTimeout: 5000,
+    maxRetriesPerRequest: 1,
+  });
+  try {
+    await redis.connect();
+    await deleteByPattern(redis, refreshKey(userId, '*'));
+  } finally {
+    redis.disconnect();
   }
 }
 

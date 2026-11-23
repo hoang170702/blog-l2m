@@ -9,6 +9,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { deleteByPattern } from '../redis/delete-by-pattern.js';
 import { REDIS } from '../redis/redis.module.js';
 import type { AccessPayload, AuthUser, RefreshPayload } from './auth.types.js';
+import { refreshKey } from './refresh-key.js';
 
 export const ACCESS_TTL_SECONDS = 15 * 60;
 export const REFRESH_TTL_SECONDS = 7 * 24 * 60 * 60;
@@ -17,8 +18,6 @@ export interface IssuedTokens {
   accessToken: string;
   refreshToken: string;
 }
-
-const refreshKey = (userId: string, jti: string) => `refresh:${userId}:${jti}`;
 
 /**
  * How long a rotated refresh token is remembered. Two browser tabs refreshing at the

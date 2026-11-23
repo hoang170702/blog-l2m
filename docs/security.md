@@ -26,7 +26,7 @@ The frontend has no secrets: anything in `VITE_*` variables ends up in public Ja
 | Secret | How | Effect |
 | --- | --- | --- |
 | `JWT_*`, `REDIS_PASSWORD` | `set-gitlab-vars.sh <env> --generate-secrets`, then redeploy | Admins log in again |
-| `ADMIN_PASSWORD` | Update the variable, redeploy | Password changes on deploy |
+| `ADMIN_PASSWORD` | Update the variable, redeploy | Password changes on deploy and every existing admin session is revoked |
 | Database password | Reset in Supabase, update `DATABASE_URL`/`DIRECT_URL`, redeploy | |
 | Deploy token | Revoke in GitLab, create a new one, update `DEPLOY_REGISTRY_*` | |
 | SSH key | New key pair, add the public key to `~deploy/.ssh/authorized_keys`, update `SSH_PRIVATE_KEY`, remove the old key | |
