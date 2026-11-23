@@ -1,4 +1,4 @@
-# Blog
+# L2M Blog
 
 A blog with a public site, an admin panel and a CI/CD pipeline that deploys to UAT and production.
 
