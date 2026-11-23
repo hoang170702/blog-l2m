@@ -1,0 +1,85 @@
+# Local development stack: http://localhost:8080
+#   cp .env.example .env && docker compose up -d --build
+# For native development (npm run start:dev / npm run dev) start only the data services:
+#   docker compose up -d postgres redis
+
+x-backend-env: &backend-env
+  NODE_ENV: production
+  DATABASE_URL: postgresql://${POSTGRES_USER:-blog}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-blog}
+  DIRECT_URL: postgresql://${POSTGRES_USER:-blog}:${POSTGRES_PASSWORD:-change-me}@postgres:5432/${POSTGRES_DB:-blog}
+  REDIS_URL: redis://redis:6379
+  JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?set JWT_ACCESS_SECRET in .env}
+  JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?set JWT_REFRESH_SECRET in .env}
+  ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+  ADMIN_PASSWORD: ${ADMIN_PASSWORD:?set ADMIN_PASSWORD in .env}
+  SEED_SAMPLE_DATA: ${SEED_SAMPLE_DATA:-true}
+  # Plain HTTP locally, so the refresh cookie must not require HTTPS.
+  COOKIE_SECURE: 'false'
+
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:-postgres:17-alpine}
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-blog}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me}
+      POSTGRES_DB: ${POSTGRES_DB:-blog}
+    ports:
+      - 127.0.0.1:5432:5432
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    command: [redis-server, --appendonly, 'yes']
+    ports:
+      - 127.0.0.1:6379:6379
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: [CMD, redis-cli, ping]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  migrate:
+    build: ./backend
+    image: blog-backend:dev
+    command: [sh, -c, './node_modules/.bin/prisma migrate deploy && node dist/seed.js']
+    environment: *backend-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: 'no'
+
+  backend:
+    image: blog-backend:dev
+    environment: *backend-env
+    volumes:
+      - uploads:/app/uploads
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  web:
+    build: ./frontend
+    image: blog-frontend:dev
+    ports:
+      - 8080:80
+    volumes:
+      - uploads:/usr/share/nginx/uploads:ro
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  redisdata:
+  uploads:
