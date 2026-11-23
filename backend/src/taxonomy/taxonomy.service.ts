@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { toSlug } from '../common/slug.js';
+import { uniqueSlug } from '../common/slug.js';
 import { PostCacheService } from '../posts/post-cache.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import type { CreateTermDto, UpdateTermDto } from './dto/taxonomy.dto.js';
@@ -19,8 +19,17 @@ export class TaxonomyService {
   }
 
   async create(kind: TermKind, dto: CreateTermDto) {
+    // An explicit slug is used as given (duplicates → 409); a generated one never
+    // collides or comes out empty ("C++" and "C#" become "c" and "c-2").
+    const slug =
+      dto.slug ??
+      (await uniqueSlug(dto.name, async (candidate) =>
+        Boolean(
+          await this.delegate(kind).findUnique({ where: { slug: candidate } }),
+        ),
+      ));
     const term = await this.delegate(kind).create({
-      data: { name: dto.name, slug: dto.slug ?? toSlug(dto.name) },
+      data: { name: dto.name, slug },
     });
     await this.cache.invalidateAll();
     return term;
