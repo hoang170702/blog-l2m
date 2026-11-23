@@ -30,8 +30,8 @@ flowchart LR
 
 ## Features
 
-- Posts written in Markdown (sanitized rendering, code highlighting), cover images, draft/published status
-- Categories, tags, title search, pagination
+- Posts written in Markdown (sanitized rendering, code highlighting), one 16:9 cover image per post (no images in the body), draft/published status; only the author edits a post, admins may delete it
+- Categories, tags, author pages (`/u/:id`), pagination; search over title, excerpt and content that ignores case and Vietnamese accents
 - Guest comments shown immediately; the post author or an admin can hide or delete them
 - Admin login with short-lived JWT access tokens and rotating refresh tokens (httpOnly cookie, stored in Redis; reuse revokes every session)
 - Image upload with content-based type detection (JPEG, PNG, WebP, GIF; 5 MB)

@@ -1,6 +1,6 @@
 # Blog frontend
 
-Vite + React + TypeScript single-page app. Public pages: post list, category/tag/search filters, post detail with Markdown and comments. Admin (`/admin`): login, posts with Markdown editor and image upload, categories, tags, comments (hide, show again, delete).
+Vite + React + TypeScript single-page app. Public pages: post list, category/tag/search filters, author pages (`/u/:id`), post detail with Markdown and comments. Admin (`/admin`): login, posts with Markdown editor and image upload, categories, tags, comments (hide, show again, delete).
 
 The app talks directly to Supabase (Postgres with row-level security, Auth, Storage); there is no backend server.
 
@@ -11,7 +11,7 @@ npm ci
 npm run dev                     # http://localhost:5173 (local admin: see supabase/seed.sql)
 ```
 
-Images are resized in the browser (max 1600 px, WebP or JPEG) before upload to the `post-images` bucket. Production builds add a CSP meta tag (Supabase URL from `VITE_SUPABASE_URL`) and write `dist/404.html` plus `public/_redirects` for SPA fallback on GitLab Pages.
+A post's only image is its cover: the browser center-crops it to 16:9 (at most 1600x900, WebP or JPEG; GIF kept as-is) before upload to the `post-images` bucket, and the old file is deleted when a cover is replaced, removed or its post is deleted. Search folds the query with `src/lib/fold.ts`, which must stay identical to `private.fold_vi()` in the database. Production builds add a CSP meta tag (Supabase URL from `VITE_SUPABASE_URL`) and write `dist/404.html` plus `public/_redirects` for SPA fallback on GitLab Pages.
 
 | Script | Purpose |
 | --- | --- |

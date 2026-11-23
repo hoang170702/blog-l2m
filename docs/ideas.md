@@ -2,11 +2,22 @@
 
 Backlog of product ideas for L2M Blog, from a product review of the current code (2026-11-23). Nothing here is scheduled; an idea moves into a plan once it is picked.
 
-Current baseline: multi-author Markdown posts, Google/GitHub sign-in, categories (admin) and tags (any author), guest comments, title-only search (`ilike` on `title`), static SPA on GitLab Pages talking to Supabase.
+Current baseline: multi-author Markdown posts, Google/GitHub sign-in, categories (admin) and tags (any author), guest comments shown immediately, search over title, excerpt and content without accents, author pages, one 16:9 cover per post, static SPA on GitLab Pages talking to Supabase.
+
+## Done
+
+Details and commits are in `plans/2026-11-23-no1-blog-monorepo/` (decisions D34-D41, evidence A016-A027).
+
+- Comments without moderation (D34).
+- One 16:9 cover per post, no images in the body (D37).
+- Only the author edits a post; admins may delete (D38).
+- Replaced, removed and deleted covers are deleted from Storage (D39).
+- Search over title, excerpt and content, ignoring case and Vietnamese accents (D40).
+- Author page `/u/:id` (D41).
 
 ## Accepted direction
 
-### Comments without moderation
+### Comments without moderation (done, D34)
 
 Anyone may comment and the comment shows immediately; there is no approval step.
 
@@ -28,8 +39,6 @@ Scope: one migration, `submit_comment`, frontend, tests. No backfill: comments h
 | Idea | Why | Effort |
 | --- | --- | --- |
 | RSS feed and `sitemap.xml` | Readers can subscribe; search engines can index posts | Low if generated at build time, but the files go stale between deploys unless a scheduled pipeline rebuilds them; a Supabase Edge Function serving them live avoids that (Medium) |
-| Full-text search with Postgres `tsvector` + `unaccent` | Matches content as well as titles, and "lap trinh" finds "lập trình" | Low (one migration, one RPC) |
-| Author page `/u/:id` | `profiles` exists but no page lists an author's posts | Low |
 | Related posts at the end of a post, by tag or category | Keeps readers on the site | Low |
 | Reading time and table of contents for long posts | Easier reading | Low |
 
@@ -68,10 +77,9 @@ Sign-up is open (D28/D29 accept the spam risk); these matter once the user count
 
 ## Suggested order
 
-1. Comments without moderation (accepted).
-2. RSS + sitemap.
-3. Full-text search with accent folding.
-4. Author page.
+1. RSS + sitemap.
+2. Clean up covers uploaded but never saved (scheduled job over `storage.objects` not referenced by `posts.cover_image_path`).
+3. Fix `frontend/vitest.config.ts` (fails at startup: "Cannot merge config in form of callback") and rewrite `App.test.tsx`, which still mocks the removed REST API.
 
 ## Rejected
 
