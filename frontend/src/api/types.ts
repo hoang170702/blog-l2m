@@ -50,7 +50,7 @@ export interface Comment {
   createdAt: string
 }
 
-export type CommentStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
+export type CommentStatus = 'APPROVED' | 'REJECTED'
 
 export interface AdminComment extends Comment {
   status: CommentStatus
@@ -71,7 +71,6 @@ export type OAuthProvider = 'google' | 'github'
 export interface DashboardStats {
   posts: number
   drafts: number
-  pendingComments: number
   /** Site-wide totals, only for admins. */
   site: { posts: number; members: number } | null
 }

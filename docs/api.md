@@ -10,7 +10,7 @@ Base path `/api`. JSON in and out. Errors use `{ statusCode, message, error }`; 
 | GET | `/posts?page=&limit=&category=&tag=&q=` | Published posts, newest first. `limit` ≤ 50. `category`/`tag` are slugs, `q` searches titles. Cached 60 s |
 | GET | `/posts/:slug` | Published post with `content`. Cached 300 s. `404` for drafts |
 | GET | `/posts/:slug/comments` | Approved comments, oldest first |
-| POST | `/posts/:slug/comments` | `{ authorName ≤ 60, content ≤ 2000 }` → `201 { id, status: "PENDING" }`. 3/min per IP |
+| POST | `/posts/:slug/comments` | `{ authorName ≤ 60, content ≤ 2000 }` → `201 { id, status: "APPROVED" }` (shown immediately). 3/min per IP |
 | GET | `/categories`, `/tags` | `{ id, name, slug }[]` |
 
 ## Auth
@@ -35,7 +35,7 @@ Access tokens are valid for 15 minutes.
 | DELETE | `/admin/posts/:id` | `204` |
 | POST / PATCH / DELETE | `/admin/categories[/:id]`, `/admin/tags[/:id]` | `{ name, slug? }`; duplicate name or slug → `409`. Deleting a category keeps its posts uncategorized |
 | GET | `/admin/comments?page=&limit=&status=` | Includes `status`, `postId`, `post { title, slug }` |
-| PATCH | `/admin/comments/:id` | `{ status: "PENDING" \| "APPROVED" \| "REJECTED" }` |
+| PATCH | `/admin/comments/:id` | `{ status: "APPROVED" \| "REJECTED" }` (show / hide) |
 | DELETE | `/admin/comments/:id` | `204` |
 | POST | `/admin/uploads` | `multipart/form-data` field `file` (JPEG/PNG/WebP/GIF, ≤ 5 MB, detected from content) → `201 { url: "/uploads/<uuid>.<ext>" }` |
 

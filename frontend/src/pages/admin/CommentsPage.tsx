@@ -10,9 +10,8 @@ import { useDocumentTitle } from '../../lib/useDocumentTitle'
 import { formatDate } from '../../lib/format'
 
 const statusLabels: Record<CommentStatus, string> = {
-  PENDING: 'Chờ duyệt',
-  APPROVED: 'Đã duyệt',
-  REJECTED: 'Từ chối',
+  APPROVED: 'Đang hiện',
+  REJECTED: 'Đã ẩn',
 }
 
 export function CommentsPage() {
@@ -21,7 +20,7 @@ export function CommentsPage() {
   const queryClient = useQueryClient()
   // Authors moderate comments on their own posts; admins see every post's comments.
   const postAuthorId = user?.isAdmin ? undefined : user?.id
-  const [status, setStatus] = useState<CommentStatus | ''>('PENDING')
+  const [status, setStatus] = useState<CommentStatus | ''>('')
   const [page, setPage] = useState(1)
   const comments = useQuery({
     queryKey: ['admin-comments', status, page, postAuthorId],
@@ -84,20 +83,19 @@ export function CommentsPage() {
                 </p>
                 <p className="mt-2 whitespace-pre-line">{comment.content}</p>
                 <div className="mt-3 flex gap-3 text-sm">
-                  {comment.status !== 'APPROVED' && (
+                  {comment.status === 'REJECTED' ? (
                     <button
                       className="text-green-700 hover:underline"
                       onClick={() => moderate.mutate({ id: comment.id, next: 'APPROVED' })}
                     >
-                      Duyệt
+                      Hiện lại
                     </button>
-                  )}
-                  {comment.status !== 'REJECTED' && (
+                  ) : (
                     <button
                       className="text-amber-700 hover:underline"
                       onClick={() => moderate.mutate({ id: comment.id, next: 'REJECTED' })}
                     >
-                      Từ chối
+                      Ẩn
                     </button>
                   )}
                   <button

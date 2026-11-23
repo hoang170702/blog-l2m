@@ -33,7 +33,7 @@ select set_config('request.headers', '{"x-forwarded-for":"203.0.113.7, 10.0.0.1"
 select isnt(public.submit_comment('open-post', '  Lan  ', '  Hay quá  '), null, 'guest comment accepted');
 reset role;
 select results_eq($$select author_name, content, status::text from public.comments$$,
-  $$values ('Lan', 'Hay quá', 'pending')$$, 'comment is trimmed and held for moderation');
+  $$values ('Lan', 'Hay quá', 'approved')$$, 'comment is trimmed and shown immediately');
 select set_config('role', 'anon', true);
 
 select throws_ok($$select public.submit_comment('open-post', '   ', 'x')$$, '22023', null, 'empty name rejected');

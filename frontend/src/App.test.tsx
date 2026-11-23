@@ -45,7 +45,7 @@ describe('App', () => {
     expect(await screen.findByRole('heading', { name: 'Đăng nhập quản trị' })).toBeInTheDocument()
   })
 
-  it('submits a comment and explains moderation', async () => {
+  it('submits a comment and confirms it is posted', async () => {
     noSession()
     let submitted: unknown
     server.use(
@@ -53,7 +53,7 @@ describe('App', () => {
       http.get('*/api/posts/hello-world/comments', () => HttpResponse.json([])),
       http.post('*/api/posts/hello-world/comments', async ({ request }) => {
         submitted = await request.json()
-        return HttpResponse.json({ id: 'x', status: 'PENDING' }, { status: 201 })
+        return HttpResponse.json({ id: 'x', status: 'APPROVED' }, { status: 201 })
       }),
     )
     renderWithProviders(<App />, { route: '/posts/hello-world' })
@@ -63,7 +63,7 @@ describe('App', () => {
     await user.type(screen.getByLabelText('Nội dung bình luận'), 'Hay quá')
     await user.click(screen.getByRole('button', { name: 'Gửi bình luận' }))
 
-    expect(await screen.findByText(/sau khi được duyệt/)).toBeInTheDocument()
+    expect(await screen.findByText(/đã được đăng/)).toBeInTheDocument()
     expect(submitted).toEqual({ authorName: 'Lan', content: 'Hay quá' })
   })
 

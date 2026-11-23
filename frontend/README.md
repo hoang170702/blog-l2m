@@ -1,6 +1,6 @@
 # Blog frontend
 
-Vite + React + TypeScript single-page app. Public pages: post list, category/tag/search filters, post detail with Markdown and moderated comments. Admin (`/admin`): login, posts with Markdown editor and image upload, categories, tags, comment moderation.
+Vite + React + TypeScript single-page app. Public pages: post list, category/tag/search filters, post detail with Markdown and comments. Admin (`/admin`): login, posts with Markdown editor and image upload, categories, tags, comments (hide, show again, delete).
 
 The app talks directly to Supabase (Postgres with row-level security, Auth, Storage); there is no backend server.
 

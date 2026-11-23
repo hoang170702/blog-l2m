@@ -62,19 +62,13 @@ export function DashboardPage() {
       </div>
 
       {stats.error && <ErrorMessage error={stats.error} />}
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         <StatCard label="Bài viết của bạn" value={stats.data?.posts} to="/dashboard/posts" />
         <StatCard
           label="Bản nháp"
           value={stats.data?.drafts}
           to="/dashboard/posts?status=DRAFT"
           tone="ink"
-        />
-        <StatCard
-          label="Bình luận chờ duyệt"
-          value={stats.data?.pendingComments}
-          to="/dashboard/comments"
-          tone="secondary"
         />
       </div>
 

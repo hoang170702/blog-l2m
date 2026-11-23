@@ -32,7 +32,7 @@ flowchart LR
 
 - Posts written in Markdown (sanitized rendering, code highlighting), cover images, draft/published status
 - Categories, tags, title search, pagination
-- Guest comments held for moderation
+- Guest comments shown immediately; the post author or an admin can hide or delete them
 - Admin login with short-lived JWT access tokens and rotating refresh tokens (httpOnly cookie, stored in Redis; reuse revokes every session)
 - Image upload with content-based type detection (JPEG, PNG, WebP, GIF; 5 MB)
 - Redis-backed rate limits: 100 requests/min per IP, 5 logins/min, 3 comments/min

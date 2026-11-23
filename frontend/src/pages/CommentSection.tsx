@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { publicApi } from '../api/endpoints'
 import { formatDate } from '../lib/format'
@@ -9,12 +9,14 @@ export function CommentSection({ slug }: { slug: string }) {
     queryKey: ['comments', slug],
     queryFn: () => publicApi.comments(slug),
   })
+  const queryClient = useQueryClient()
   const [authorName, setAuthorName] = useState('')
   const [content, setContent] = useState('')
   const submit = useMutation({
     mutationFn: () => publicApi.submitComment(slug, { authorName, content }),
     onSuccess: () => {
       setContent('')
+      return queryClient.invalidateQueries({ queryKey: ['comments', slug] })
     },
   })
 
@@ -79,7 +81,7 @@ export function CommentSection({ slug }: { slug: string }) {
             role="status"
             className="rounded-2xl bg-primary-soft px-4 py-3 text-sm font-semibold text-primary-dark"
           >
-            Cảm ơn bạn! Bình luận sẽ hiển thị sau khi được duyệt.
+            Cảm ơn bạn! Bình luận đã được đăng.
           </p>
         )}
         <button type="submit" disabled={submit.isPending} className="btn-primary">

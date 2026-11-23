@@ -17,7 +17,7 @@ insert into public.posts (id, title, content, status, author_id) values
   ('aaaaaaaa-2222-4222-8222-222222222222', 'Draft post', 'Secret draft', 'draft', '33333333-3333-4333-8333-333333333333');
 insert into public.comments (id, post_id, author_name, content, status) values
   ('cccccccc-1111-4111-8111-111111111111', 'aaaaaaaa-1111-4111-8111-111111111111', 'Ann', 'Nice', 'approved'),
-  ('cccccccc-2222-4222-8222-222222222222', 'aaaaaaaa-1111-4111-8111-111111111111', 'Bob', 'Spam?', 'pending');
+  ('cccccccc-2222-4222-8222-222222222222', 'aaaaaaaa-1111-4111-8111-111111111111', 'Bob', 'Spam?', 'rejected');
 
 create function pg_temp.as_anon() returns void language sql as $$
   select set_config('role', 'anon', true), set_config('request.jwt.claims', '{"role":"anon"}', true);
@@ -37,7 +37,7 @@ select is((select count(*) from public.posts), 1::bigint, 'anon sees only publis
 select is((select count(*) from public.posts where slug = 'draft-post'), 0::bigint, 'anon cannot read a draft by slug');
 select throws_ok($$insert into public.posts (title, content) values ('Hack', 'x')$$, '42501', null,
   'anon cannot create posts');
-select is((select count(*) from public.comments), 1::bigint, 'anon sees only approved comments');
+select is((select count(*) from public.comments), 1::bigint, 'anon does not see hidden comments');
 select throws_ok($$insert into public.comments (post_id, author_name, content)
   values ('aaaaaaaa-1111-4111-8111-111111111111', 'X', 'direct')$$, '42501', null,
   'anon cannot insert comments directly');
@@ -69,7 +69,7 @@ select throws_ok($$insert into public.categories (name) values ('Nope')$$, '4250
 select pg_temp.as_user('33333333-3333-4333-8333-333333333333');
 select is((select count(*) from public.posts), 3::bigint, 'author sees own draft and all published posts');
 select lives_ok($$update public.comments set status = 'approved'
-  where id = 'cccccccc-2222-4222-8222-222222222222'$$, 'author moderates comments on own post');
+  where id = 'cccccccc-2222-4222-8222-222222222222'$$, 'author shows a hidden comment on own post again');
 select is((select count(*) from public.comments where post_id = 'aaaaaaaa-3333-4333-8333-333333333333'), 0::bigint,
   'author sees no comments on posts of others');
 

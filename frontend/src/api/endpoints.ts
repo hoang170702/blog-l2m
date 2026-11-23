@@ -65,7 +65,7 @@ interface CommentRow {
   author_name: string
   content: string
   created_at: string
-  status: 'pending' | 'approved' | 'rejected'
+  status: 'approved' | 'rejected'
   post_id: string
   post: { title: string; slug: string } | null
 }
@@ -261,7 +261,7 @@ export const publicApi = {
         p_content: body.content,
       }),
     ) as string
-    return { id, status: 'PENDING' }
+    return { id, status: 'APPROVED' }
   },
 
   async terms(kind: TermKind): Promise<Term[]> {
@@ -434,16 +434,9 @@ export const adminApi = {
   async stats(user: User): Promise<DashboardStats> {
     const mine = () =>
       supabase.from('posts').select('id', { count: 'exact', head: true }).eq('author_id', user.id)
-    let pending = supabase
-      .from('comments')
-      .select('id, post:posts!inner(author_id)', { count: 'exact', head: true })
-      .eq('status', 'pending')
-    if (!user.isAdmin) pending = pending.eq('post.author_id', user.id)
-
-    const [posts, drafts, pendingComments, sitePosts, members] = await Promise.all([
+    const [posts, drafts, sitePosts, members] = await Promise.all([
       count(mine()),
       count(mine().eq('status', 'draft')),
-      count(pending),
       user.isAdmin
         ? count(supabase.from('posts').select('id', { count: 'exact', head: true }))
         : Promise.resolve(0),
@@ -454,7 +447,6 @@ export const adminApi = {
     return {
       posts,
       drafts,
-      pendingComments,
       site: user.isAdmin ? { posts: sitePosts, members } : null,
     }
   },
