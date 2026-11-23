@@ -39,7 +39,7 @@ export function TermsPage({ kind }: { kind: TermKind }) {
 
   return (
     <section className="max-w-xl">
-      <h1 className="mb-4 text-2xl font-semibold">{titles[kind]}</h1>
+      <h1 className="mb-4 text-3xl font-extrabold">{titles[kind]}</h1>
       <form onSubmit={onSubmit} className="mb-4 flex gap-2">
         <input
           required
@@ -48,9 +48,9 @@ export function TermsPage({ kind }: { kind: TermKind }) {
           onChange={(e) => setName(e.target.value)}
           placeholder={`Tên ${titles[kind].toLowerCase()} mới`}
           aria-label="Tên"
-          className="flex-1 rounded border px-3 py-1.5"
+          className="input flex-1 py-2"
         />
-        <button type="submit" className="rounded bg-indigo-600 px-3 py-1.5 text-white">
+        <button type="submit" className="btn-primary">
           Thêm
         </button>
       </form>
@@ -66,10 +66,10 @@ export function TermsPage({ kind }: { kind: TermKind }) {
           {terms.data.map((term) => (
             <li key={term.id} className="flex items-center gap-3 py-2">
               <span className="flex-1">
-                {term.name} <span className="text-xs text-slate-400">/{term.slug}</span>
+                {term.name} <span className="text-xs text-muted">/{term.slug}</span>
               </span>
               <button
-                className="text-sm text-slate-600 hover:underline"
+                className="text-sm text-muted hover:underline"
                 onClick={() => {
                   const value = prompt('Tên mới', term.name)?.trim()
                   if (value && value !== term.name) rename.mutate({ id: term.id, value })

@@ -44,7 +44,11 @@ export function HomePage({ mode = 'all' }: { mode?: Mode }) {
 
   return (
     <section>
-      {heading && <h1 className="mb-2 text-2xl font-semibold">{heading}</h1>}
+      {heading ? (
+        <h1 className="mb-8 text-3xl font-extrabold md:text-4xl">{heading}</h1>
+      ) : (
+        page === 1 && <Hero />
+      )}
       {isPending ? (
         <Spinner />
       ) : error ? (
@@ -53,12 +57,42 @@ export function HomePage({ mode = 'all' }: { mode?: Mode }) {
         <Empty>Chưa có bài viết nào.</Empty>
       ) : (
         <>
-          {data.items.map((post) => (
-            <PostCard key={post.id} post={post} />
-          ))}
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {data.items.map((post, index) => (
+              <PostCard
+                key={post.id}
+                post={post}
+                featured={mode === 'all' && page === 1 && index === 0}
+              />
+            ))}
+          </div>
           <Pagination page={data.page} total={data.total} limit={data.limit} onChange={goTo} />
         </>
       )}
     </section>
+  )
+}
+
+function Hero() {
+  return (
+    <div className="relative mb-12 overflow-hidden rounded-3xl border border-line bg-surface px-6 py-14 text-center sm:px-12">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full bg-primary/20 blur-3xl"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -right-20 -bottom-28 h-72 w-72 rounded-full bg-secondary/20 blur-3xl"
+      />
+      <p className="relative mb-4 inline-flex rounded-full bg-primary-soft px-4 py-1 text-xs font-bold tracking-wide text-primary-dark uppercase">
+        Nhật ký &amp; chia sẻ
+      </p>
+      <h1 className="relative mx-auto max-w-3xl text-4xl leading-tight font-extrabold md:text-5xl">
+        Viết lại những điều <span className="text-gradient">đáng nhớ</span>
+      </h1>
+      <p className="relative mx-auto mt-4 max-w-xl text-lg text-muted">
+        Những câu chuyện, ghi chép và trải nghiệm — được kể theo cách gần gũi nhất.
+      </p>
+    </div>
   )
 }

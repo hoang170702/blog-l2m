@@ -2,35 +2,56 @@ import { Link } from 'react-router'
 import type { PostSummary } from '../api/types'
 import { formatDate } from '../lib/format'
 
-export function PostCard({ post }: { post: PostSummary }) {
+export function PostCard({ post, featured = false }: { post: PostSummary; featured?: boolean }) {
   return (
-    <article className="flex flex-col gap-4 border-b border-slate-100 py-6 sm:flex-row">
-      {post.coverImageUrl && (
-        <img
-          src={post.coverImageUrl}
-          alt=""
-          loading="lazy"
-          className="h-40 w-full rounded object-cover sm:h-28 sm:w-44"
-        />
-      )}
-      <div className="min-w-0 flex-1">
-        <h2 className="text-xl font-semibold">
-          <Link to={`/posts/${post.slug}`} className="hover:text-indigo-600">
+    <article
+      className={`card group flex flex-col overflow-hidden transition duration-300 hover:-translate-y-1 hover:shadow-glow ${
+        featured ? 'md:col-span-2 md:flex-row' : ''
+      }`}
+    >
+      <Link
+        to={`/posts/${post.slug}`}
+        className={`block overflow-hidden bg-gradient-to-br from-primary-soft to-secondary-soft ${
+          featured ? 'aspect-video md:aspect-auto md:w-1/2' : 'aspect-video'
+        }`}
+        tabIndex={-1}
+        aria-hidden="true"
+      >
+        {post.coverImageUrl ? (
+          <img
+            src={post.coverImageUrl}
+            alt=""
+            loading="lazy"
+            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <span className="grid h-full w-full place-items-center font-display text-5xl font-extrabold text-primary/30">
+            {post.title.charAt(0).toUpperCase()}
+          </span>
+        )}
+      </Link>
+      <div
+        className={`flex flex-1 flex-col gap-3 p-6 ${featured ? 'md:justify-center md:p-8' : ''}`}
+      >
+        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-muted">
+          {post.category && (
+            <Link
+              to={`/category/${post.category.slug}`}
+              className="rounded-full bg-secondary-soft px-3 py-1 text-secondary-dark transition hover:bg-secondary hover:text-ink"
+            >
+              {post.category.name}
+            </Link>
+          )}
+          <span>{formatDate(post.publishedAt)}</span>
+        </div>
+        <h2
+          className={`font-display font-bold leading-tight ${featured ? 'text-2xl md:text-3xl' : 'text-xl'}`}
+        >
+          <Link to={`/posts/${post.slug}`} className="transition hover:text-primary">
             {post.title}
           </Link>
         </h2>
-        <p className="mt-1 text-sm text-slate-500">
-          {formatDate(post.publishedAt)}
-          {post.category && (
-            <>
-              {' · '}
-              <Link to={`/category/${post.category.slug}`} className="hover:underline">
-                {post.category.name}
-              </Link>
-            </>
-          )}
-        </p>
-        {post.excerpt && <p className="mt-2 text-slate-700">{post.excerpt}</p>}
+        {post.excerpt && <p className="line-clamp-3 text-muted">{post.excerpt}</p>}
         <TagList tags={post.tags} />
       </div>
     </article>
@@ -40,13 +61,10 @@ export function PostCard({ post }: { post: PostSummary }) {
 export function TagList({ tags }: { tags: PostSummary['tags'] }) {
   if (tags.length === 0) return null
   return (
-    <ul className="mt-2 flex flex-wrap gap-2">
+    <ul className="mt-auto flex flex-wrap gap-2 pt-1">
       {tags.map((tag) => (
         <li key={tag.id}>
-          <Link
-            to={`/tag/${tag.slug}`}
-            className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600 hover:bg-indigo-100"
-          >
+          <Link to={`/tag/${tag.slug}`} className="pill">
             #{tag.name}
           </Link>
         </li>

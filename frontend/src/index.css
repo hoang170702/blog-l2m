@@ -1,2 +1,64 @@
+@import '@fontsource-variable/plus-jakarta-sans';
+@import '@fontsource-variable/epilogue';
 @import 'tailwindcss';
 @plugin '@tailwindcss/typography';
+
+@theme {
+  --font-sans: 'Plus Jakarta Sans Variable', system-ui, -apple-system, sans-serif;
+  --font-display: 'Epilogue Variable', 'Plus Jakarta Sans Variable', sans-serif;
+
+  /* Crimson red + golden amber */
+  --color-primary: #c8102e;
+  --color-primary-hover: #a50d26;
+  --color-primary-dark: #8c0b20;
+  --color-primary-soft: #fdecee;
+  --color-secondary: #f2a900;
+  --color-secondary-dark: #8a5d00;
+  --color-secondary-soft: #fff5d6;
+  --color-canvas: #fbf8f3;
+  --color-surface: #ffffff;
+  --color-ink: #2b1a14;
+  --color-muted: #786660;
+  --color-line: #efe6dc;
+
+  --shadow-card: 0 1px 3px 0 rgb(43 26 20 / 0.06), 0 1px 2px -1px rgb(43 26 20 / 0.06);
+  --shadow-glow: 0 20px 40px -16px rgb(200 16 46 / 0.3);
+}
+
+@layer base {
+  body {
+    @apply bg-canvas font-sans text-ink antialiased;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-display tracking-tight;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-glow transition hover:bg-primary-hover disabled:opacity-50 disabled:shadow-none;
+  }
+
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-line bg-surface px-5 py-2.5 text-sm font-semibold text-ink transition hover:border-primary hover:text-primary;
+  }
+
+  .input {
+    @apply w-full rounded-xl border border-line bg-surface px-4 py-2.5 text-ink outline-none transition placeholder:text-muted focus:border-primary focus:ring-4 focus:ring-primary/15;
+  }
+
+  .card {
+    @apply rounded-3xl border border-line bg-surface shadow-card;
+  }
+
+  .pill {
+    @apply inline-flex items-center rounded-full bg-primary-soft px-3 py-1 text-xs font-semibold text-primary-dark transition hover:bg-primary hover:text-white;
+  }
+
+  .text-gradient {
+    @apply bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent;
+  }
+}

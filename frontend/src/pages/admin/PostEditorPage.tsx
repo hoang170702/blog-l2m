@@ -103,7 +103,7 @@ function PostForm({ id, initial }: { id?: string; initial: PostInput }) {
 
   return (
     <form onSubmit={onSubmit} className="space-y-4">
-      <h1 className="text-2xl font-semibold">{id ? 'Sửa bài viết' : 'Bài viết mới'}</h1>
+      <h1 className="text-3xl font-extrabold">{id ? 'Sửa bài viết' : 'Bài viết mới'}</h1>
       <input
         required
         maxLength={200}
@@ -111,7 +111,7 @@ function PostForm({ id, initial }: { id?: string; initial: PostInput }) {
         onChange={(e) => update('title', e.target.value)}
         placeholder="Tiêu đề"
         aria-label="Tiêu đề"
-        className="w-full rounded border px-3 py-2 text-lg"
+        className="input font-display text-lg font-bold"
       />
       <input
         value={post.slug ?? ''}
@@ -119,7 +119,7 @@ function PostForm({ id, initial }: { id?: string; initial: PostInput }) {
         placeholder="Slug (để trống để tự tạo)"
         aria-label="Slug"
         pattern="[a-z0-9]+(-[a-z0-9]+)*"
-        className="w-full rounded border px-3 py-2 text-sm"
+        className="input text-sm"
       />
       <textarea
         maxLength={500}
@@ -128,7 +128,7 @@ function PostForm({ id, initial }: { id?: string; initial: PostInput }) {
         onChange={(e) => update('excerpt', e.target.value)}
         placeholder="Tóm tắt"
         aria-label="Tóm tắt"
-        className="w-full rounded border px-3 py-2"
+        className="input"
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -137,7 +137,7 @@ function PostForm({ id, initial }: { id?: string; initial: PostInput }) {
           <select
             value={post.categoryId ?? ''}
             onChange={(e) => update('categoryId', e.target.value || null)}
-            className="mt-1 w-full rounded border px-2 py-1.5"
+            className="input mt-1 py-2"
           >
             <option value="">— Không có —</option>
             {categories.data?.map((c) => (
@@ -152,7 +152,7 @@ function PostForm({ id, initial }: { id?: string; initial: PostInput }) {
           <select
             value={post.status}
             onChange={(e) => update('status', e.target.value as PostInput['status'])}
-            className="mt-1 w-full rounded border px-2 py-1.5"
+            className="input mt-1 py-2"
           >
             <option value="DRAFT">Bản nháp</option>
             <option value="PUBLISHED">Xuất bản</option>
@@ -167,7 +167,7 @@ function PostForm({ id, initial }: { id?: string; initial: PostInput }) {
             className="mt-1 block w-full text-xs"
           />
           {post.coverImageUrl && (
-            <span className="mt-1 flex items-center gap-2 text-xs text-slate-500">
+            <span className="mt-1 flex items-center gap-2 text-xs text-muted">
               {post.coverImageUrl}
               <button
                 type="button"
@@ -217,12 +217,12 @@ function PostForm({ id, initial }: { id?: string; initial: PostInput }) {
             onChange={(e) => e.target.files?.[0] && insertImage(e.target.files[0])}
           />
         </label>
-        {upload.isPending && <span className="text-slate-500">Đang tải ảnh…</span>}
+        {upload.isPending && <span className="text-muted">Đang tải ảnh…</span>}
       </div>
       {upload.isError && <ErrorMessage error={upload.error} />}
 
       {preview ? (
-        <div className="min-h-64 rounded border p-4">
+        <div className="card min-h-64 p-6">
           <Markdown>{post.content}</Markdown>
         </div>
       ) : (
@@ -234,24 +234,16 @@ function PostForm({ id, initial }: { id?: string; initial: PostInput }) {
           onChange={(e) => update('content', e.target.value)}
           placeholder="Nội dung (Markdown)"
           aria-label="Nội dung"
-          className="w-full rounded border px-3 py-2 font-mono text-sm"
+          className="input font-mono text-sm"
         />
       )}
 
       {save.isError && <ErrorMessage error={save.error} />}
       <div className="flex gap-3">
-        <button
-          type="submit"
-          disabled={save.isPending}
-          className="rounded bg-indigo-600 px-4 py-2 text-white disabled:opacity-50"
-        >
+        <button type="submit" disabled={save.isPending} className="btn-primary">
           Lưu
         </button>
-        <button
-          type="button"
-          className="rounded border px-4 py-2"
-          onClick={() => navigate('/admin/posts')}
-        >
+        <button type="button" className="btn-ghost" onClick={() => navigate('/admin/posts')}>
           Huỷ
         </button>
       </div>

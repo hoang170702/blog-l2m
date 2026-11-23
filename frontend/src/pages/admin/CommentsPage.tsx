@@ -35,7 +35,7 @@ export function CommentsPage() {
   return (
     <section>
       <div className="mb-4 flex items-center gap-3">
-        <h1 className="flex-1 text-2xl font-semibold">Bình luận</h1>
+        <h1 className="flex-1 text-3xl font-extrabold">Bình luận</h1>
         <select
           value={status}
           onChange={(e) => {
@@ -43,7 +43,7 @@ export function CommentsPage() {
             setPage(1)
           }}
           aria-label="Lọc trạng thái"
-          className="rounded border px-2 py-1"
+          className="input w-auto py-2 text-sm"
         >
           <option value="">Tất cả</option>
           {Object.entries(statusLabels).map(([value, label]) => (
@@ -64,9 +64,9 @@ export function CommentsPage() {
         <>
           <ul className="space-y-3">
             {comments.data.items.map((comment) => (
-              <li key={comment.id} className="rounded border p-4">
-                <p className="text-sm text-slate-500">
-                  <strong className="text-slate-800">{comment.authorName}</strong> ·{' '}
+              <li key={comment.id} className="card p-5">
+                <p className="text-sm text-muted">
+                  <strong className="text-ink">{comment.authorName}</strong> ·{' '}
                   {formatDate(comment.createdAt)} · {statusLabels[comment.status]} ·{' '}
                   <Link to={`/posts/${comment.post.slug}`} className="hover:underline">
                     {comment.post.title}
