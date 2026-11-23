@@ -26,14 +26,13 @@ export function HomePage({ mode = 'all' }: { mode?: Mode }) {
     placeholderData: keepPreviousData,
   })
 
-  const heading =
-    mode === 'category'
-      ? `Chuyên mục: ${data?.items[0]?.category?.name ?? slug}`
-      : mode === 'tag'
-        ? `Thẻ: #${slug}`
-        : mode === 'search'
-          ? `Kết quả cho “${q}”`
-          : undefined
+  const headings: Record<Mode, string | undefined> = {
+    all: undefined,
+    category: `Chuyên mục: ${data?.items[0]?.category?.name ?? slug}`,
+    tag: `Thẻ: #${slug}`,
+    search: `Kết quả cho “${q}”`,
+  }
+  const heading = headings[mode]
   useDocumentTitle(heading)
 
   function goTo(next: number) {
