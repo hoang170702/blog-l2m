@@ -1,7 +1,7 @@
--- Function exposure, guest comments, slugs, publishing and the sign-up hook.
+-- Function exposure, guest comments, slugs and publishing.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(17);
+select plan(16);
 
 -- Start from an empty content set (seed data is removed inside this rolled-back transaction).
 delete from public.comments; delete from public.post_tags; delete from public.posts;
@@ -68,12 +68,9 @@ update public.posts set status = 'published' where slug = 'cong-nghe-da-lat';
 select is((select published_at::text from public.posts where slug = 'cong-nghe-da-lat'),
   current_setting('test.first_published'), 'published_at keeps the first publish time');
 
--- Sign-up hook
-insert into private.account_allowlist (email) values ('owner@test.local');
-select is(public.hook_before_user_created('{"user":{"email":"Owner@Test.local"}}') -> 'error', null,
-  'allowlisted email may get an account');
-select is((public.hook_before_user_created('{"user":{"email":"stranger@test.local"}}') -> 'error' ->> 'http_code')::int,
-  403, 'other emails are rejected');
+-- Open sign-up: the allowlist hook is gone
+select is((select count(*) from pg_proc where proname = 'hook_before_user_created'), 0::bigint,
+  'no sign-up hook remains');
 
 select * from finish();
 rollback;

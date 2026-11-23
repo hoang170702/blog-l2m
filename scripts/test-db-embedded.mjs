@@ -34,6 +34,7 @@ const SUPABASE_STUBS = `
     email text,
     email_confirmed_at timestamptz,
     raw_app_meta_data jsonb default '{}'::jsonb,
+    raw_user_meta_data jsonb default '{}'::jsonb,
     created_at timestamptz default now()
   );
   create function auth.jwt() returns jsonb language sql stable as $$

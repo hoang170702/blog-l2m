@@ -1,8 +1,6 @@
 -- Local development only (`supabase db reset`); `supabase db push` never runs this file.
 -- Admin login: admin@example.com / local-dev-admin-password
 
-insert into private.account_allowlist (email) values ('admin@example.com');
-
 insert into auth.users (
   instance_id, id, aud, role, email, encrypted_password, email_confirmed_at,
   raw_app_meta_data, raw_user_meta_data, created_at, updated_at,
@@ -11,7 +9,7 @@ insert into auth.users (
   '00000000-0000-0000-0000-000000000000', 'aaaaaaaa-0000-4000-8000-000000000001',
   'authenticated', 'authenticated', 'admin@example.com',
   extensions.crypt('local-dev-admin-password', extensions.gen_salt('bf')), now(),
-  '{"provider":"email","providers":["email"]}', '{}', now(), now(), '', '', '', ''
+  '{"provider":"email","providers":["email"]}', '{"full_name":"Quản trị viên"}', now(), now(), '', '', '', ''
 );
 
 insert into auth.identities (id, user_id, provider_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
