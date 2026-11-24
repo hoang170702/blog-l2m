@@ -22,6 +22,9 @@ export const supabase = createClient(url, anonKey, {
 
 export const POST_IMAGES_BUCKET = 'post-images'
 
+/** RSS feed and sitemap, served by the `feed` Edge Function (supabase/functions/feed). */
+export const RSS_URL = `${url}/functions/v1/feed/rss.xml`
+
 export function postImageUrl(path: string) {
   return supabase.storage.from(POST_IMAGES_BUCKET).getPublicUrl(path).data.publicUrl
 }

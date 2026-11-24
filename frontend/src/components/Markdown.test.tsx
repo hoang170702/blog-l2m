@@ -16,6 +16,19 @@ describe('Markdown', () => {
     expect(container.querySelector('a')?.getAttribute('href') ?? '').not.toMatch(/javascript:/)
   })
 
+  it('gives h2/h3 stable, unique ids for the table of contents', () => {
+    const { container } = render(
+      <Markdown>
+        {'## Cài đặt **nhanh**\n\n### Bước 1\n\n## Cài đặt nhanh\n\n#### Bỏ qua'}
+      </Markdown>,
+    )
+    expect(Array.from(container.querySelectorAll('[id]'), (node) => node.id)).toEqual([
+      'h-cai-dat-nhanh',
+      'h-buoc-1',
+      'h-cai-dat-nhanh-2',
+    ])
+  })
+
   it('drops Markdown images because a post shows only its cover', () => {
     const { container } = render(
       <Markdown>{'Text\n\n![photo](https://example.com/a.webp)'}</Markdown>,

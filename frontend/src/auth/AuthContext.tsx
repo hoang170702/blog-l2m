@@ -9,6 +9,7 @@ import {
 } from 'react'
 import { authApi } from '../api/endpoints'
 import type { OAuthProvider, User } from '../api/types'
+import { clearAutosaves } from '../lib/autosave'
 import { supabase } from '../lib/supabase'
 
 interface AuthState {
@@ -17,6 +18,8 @@ interface AuthState {
   signInWithProvider: (provider: OAuthProvider) => Promise<void>
   signInWithPassword: (email: string, password: string) => Promise<void>
   logout: () => Promise<void>
+  /** Re-reads the profile, admin flag and suspension after they change. */
+  refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthState | null>(null)
@@ -34,6 +37,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   // every later sign-in, sign-out or profile change arrives as an auth event.
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((event) => {
+      // Autosaves are cleared only on an explicit logout: SIGNED_OUT also fires when the session
+      // expires mid-edit, and the autosave is what brings that work back after signing in again.
       if (event === 'SIGNED_OUT') {
         setUser(null)
         setLoading(false)
@@ -62,12 +67,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     await authApi.logout().catch(() => undefined)
+    clearAutosaves()
     setUser(null)
   }, [])
 
   const value = useMemo(
-    () => ({ user, loading, signInWithProvider, signInWithPassword, logout }),
-    [user, loading, signInWithProvider, signInWithPassword, logout],
+    () => ({ user, loading, signInWithProvider, signInWithPassword, logout, refreshUser: reload }),
+    [user, loading, signInWithProvider, signInWithPassword, logout, reload],
   )
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }

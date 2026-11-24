@@ -7,11 +7,14 @@ const memberLinks = [
   ['/dashboard', 'Tổng quan', true],
   ['/dashboard/posts', 'Bài viết', false],
   ['/dashboard/comments', 'Bình luận', false],
+  ['/dashboard/profile', 'Hồ sơ', false],
 ] as const
 
 const adminLinks = [
   ['/dashboard/categories', 'Chuyên mục'],
   ['/dashboard/tags', 'Thẻ'],
+  ['/dashboard/reports', 'Báo cáo'],
+  ['/dashboard/members', 'Thành viên'],
 ] as const
 
 function navClass({ isActive }: { isActive: boolean }) {
@@ -70,6 +73,15 @@ export function AdminLayout() {
           </nav>
         </aside>
         <main className="min-w-0 flex-1">
+          {user?.suspended && (
+            <p
+              role="alert"
+              className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700"
+            >
+              Tài khoản của bạn đang bị khoá: bạn vẫn đọc được nhưng không thể viết, sửa bài, tải
+              ảnh hay thích bài. Liên hệ quản trị viên nếu đây là nhầm lẫn.
+            </p>
+          )}
           <Outlet />
         </main>
       </div>

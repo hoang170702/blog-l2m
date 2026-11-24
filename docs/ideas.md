@@ -14,6 +14,7 @@ Details and commits are in `plans/2026-11-23-no1-blog-monorepo/` (decisions D34-
 - Replaced, removed and deleted covers are deleted from Storage (D39).
 - Search over title, excerpt and content, ignoring case and Vietnamese accents (D40).
 - Author page `/u/:id` (D41).
+- 2026-11-24: RSS feed and sitemap (Edge Function `feed`); reading time, table of contents and related posts; view counts (one per address, post and hour) and likes; one level of comment replies; local autosave in the editor; scheduled publishing; reports with an admin queue, account suspension, and rate limits on new posts (10/hour) and image uploads (30/hour); delete from the post page for the author or an admin; profile page. Migrations `20261124090000`-`20261124090200`.
 
 ## Accepted direction
 
@@ -34,37 +35,20 @@ Scope: one migration, `submit_comment`, frontend, tests. No backfill: comments h
   - Tests: `frontend/src/App.test.tsx` (48-66), `supabase/tests/database/functions_test.sql` (36), `supabase/tests/database/access_test.sql` (20).
   - Decision D31 in the plan bundle.
 
-## Readers and discovery
-
-| Idea | Why | Effort |
-| --- | --- | --- |
-| RSS feed and `sitemap.xml` | Readers can subscribe; search engines can index posts | Low if generated at build time, but the files go stale between deploys unless a scheduled pipeline rebuilds them; a Supabase Edge Function serving them live avoids that (Medium) |
-| Related posts at the end of a post, by tag or category | Keeps readers on the site | Low |
-| Reading time and table of contents for long posts | Easier reading | Low |
-
 ## Engagement
 
-- Reactions / likes on posts: a `reactions` table unique on `(post_id, user_id)`.
-- View count through an increment RPC, shown on the author's dashboard.
-- Replies to comments (one level).
 - Email the author about new comments on their posts (Supabase Edge Function).
 - Bookmarks / read later for signed-in users.
 
 ## Writing
 
-- Autosave drafts every few seconds (the editor only warns about unsaved changes today).
-- Scheduled publishing: `published_at` in the future, readable only once `published_at <= now()`. Medium effort: every RLS policy and query that checks `status = 'published'` (posts, post tags, comments, `submit_comment`) needs the extra condition, and the editor needs a date picker (the `set_published_at` trigger already keeps a date that is set).
 - Post series with an ordered list of parts.
 - Shareable preview link for a draft, to get feedback before publishing.
 - Per-post stats on the dashboard: views, comments, reactions.
 
 ## Community safety
 
-Sign-up is open (D28/D29 accept the spam risk); these matter once the user count grows.
-
-- Report a post or comment, with a review queue for admins.
-- Admins hide posts or suspend accounts.
-- Rate limits on creating posts and uploading images (today only the 2 MiB image cap and the comment limit exist).
+- Hide a post without deleting it (admins can delete reported posts and suspend their authors today).
 
 ## Measurement
 
@@ -77,9 +61,7 @@ Sign-up is open (D28/D29 accept the spam risk); these matter once the user count
 
 ## Suggested order
 
-1. RSS + sitemap.
-2. Clean up covers uploaded but never saved (scheduled job over `storage.objects` not referenced by `posts.cover_image_path`).
-3. Fix `frontend/vitest.config.ts` (fails at startup: "Cannot merge config in form of callback") and rewrite `App.test.tsx`, which still mocks the removed REST API.
+1. Clean up covers uploaded but never saved (scheduled job over `storage.objects` not referenced by `posts.cover_image_path`; needs an Edge Function with the service key, because Storage files cannot be deleted through SQL).
 
 ## Rejected
 

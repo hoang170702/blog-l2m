@@ -29,6 +29,15 @@ const PostEditorPage = lazy(() =>
 const PostsPage = lazy(() =>
   import('./pages/admin/PostsPage').then((m) => ({ default: m.PostsPage })),
 )
+const MembersPage = lazy(() =>
+  import('./pages/admin/MembersPage').then((m) => ({ default: m.MembersPage })),
+)
+const ProfilePage = lazy(() =>
+  import('./pages/admin/ProfilePage').then((m) => ({ default: m.ProfilePage })),
+)
+const ReportsPage = lazy(() =>
+  import('./pages/admin/ReportsPage').then((m) => ({ default: m.ReportsPage })),
+)
 const TermsPage = lazy(() =>
   import('./pages/admin/TermsPage').then((m) => ({ default: m.TermsPage })),
 )
@@ -70,6 +79,7 @@ export const routes: RouteObject[] = [
           { index: true, element: page(<DashboardPage />) },
           { path: 'posts', element: page(<PostsPage />) },
           { path: 'comments', element: page(<CommentsPage />) },
+          { path: 'profile', element: page(<ProfilePage />) },
           {
             element: (
               <RequireAuth admin>
@@ -82,6 +92,8 @@ export const routes: RouteObject[] = [
                 element: page(<TermsPage key="categories" kind="categories" />),
               },
               { path: 'tags', element: page(<TermsPage key="tags" kind="tags" />) },
+              { path: 'reports', element: page(<ReportsPage />) },
+              { path: 'members', element: page(<MembersPage />) },
             ],
           },
         ],

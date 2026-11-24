@@ -4,6 +4,7 @@ import { adminApi } from '../../api/endpoints'
 import { useAuth } from '../../auth/AuthContext'
 import { Empty, ErrorMessage, Spinner } from '../../components/Status'
 import { formatDate } from '../../lib/format'
+import { isFuture, isLive } from '../../lib/schedule'
 import { useDocumentTitle } from '../../lib/useDocumentTitle'
 
 function StatCard({
@@ -78,9 +79,13 @@ export function DashboardPage() {
           <span>
             <strong className="font-display text-lg">{stats.data.site.posts}</strong> bài viết
           </span>
-          <span>
+          <Link to="/dashboard/members" className="hover:text-primary">
             <strong className="font-display text-lg">{stats.data.site.members}</strong> thành viên
-          </span>
+          </Link>
+          <Link to="/dashboard/reports" className="hover:text-primary">
+            <strong className="font-display text-lg">{stats.data.site.openReports}</strong> báo cáo
+            chờ xử lý
+          </Link>
           <Link
             to="/dashboard/posts?all=1"
             className="ml-auto font-semibold text-primary hover:underline"
@@ -121,8 +126,11 @@ export function DashboardPage() {
                   </Link>
                   <p className="text-xs text-muted">Cập nhật {formatDate(post.updatedAt)}</p>
                 </div>
-                <StatusBadge published={post.status === 'PUBLISHED'} />
-                {post.status === 'PUBLISHED' && (
+                <StatusBadge
+                  published={post.status === 'PUBLISHED'}
+                  publishedAt={post.publishedAt}
+                />
+                {isLive(post) && (
                   <Link
                     to={`/posts/${post.slug}`}
                     className="hidden text-sm font-semibold text-muted hover:text-primary sm:inline"
@@ -139,7 +147,21 @@ export function DashboardPage() {
   )
 }
 
-export function StatusBadge({ published }: { published: boolean }) {
+/** `publishedAt` in the future marks a published post as scheduled. */
+export function StatusBadge({
+  published,
+  publishedAt,
+}: {
+  published: boolean
+  publishedAt?: string | null
+}) {
+  if (published && isFuture(publishedAt)) {
+    return (
+      <span className="rounded-full bg-secondary-soft px-2.5 py-1 text-xs font-bold text-secondary-dark">
+        Hẹn {formatDate(publishedAt)}
+      </span>
+    )
+  }
   return published ? (
     <span className="rounded-full bg-green-50 px-2.5 py-1 text-xs font-bold text-green-700">
       Đã đăng

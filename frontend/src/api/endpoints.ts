@@ -14,12 +14,17 @@ import type {
   Comment,
   CommentStatus,
   DashboardStats,
+  Member,
   OAuthProvider,
   Page,
   PostDetail,
   PostInput,
   PostStatus,
   PostSummary,
+  ProfileInput,
+  Report,
+  ReportStatus,
+  ReportTarget,
   Term,
   User,
 } from './types'
@@ -27,6 +32,8 @@ import type {
 export type TermKind = 'categories' | 'tags'
 
 const PAGE_SIZE = 10
+// admin_list_users pages by 20 (supabase/migrations/20261124090100_community_safety.sql).
+const MEMBERS_PAGE_SIZE = 20
 // Ids go straight into filters; a malformed one would make PostgREST answer 400 instead of "not found".
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
@@ -56,6 +63,7 @@ interface PostRow {
   category: TermRow | null
   post_tags: { tag: TermRow | null }[]
   author: ProfileRow | null
+  stats: { view_count: number; like_count: number } | null
   author_id: string | null
   content: string
   status: 'draft' | 'published'
@@ -65,6 +73,7 @@ interface PostRow {
 
 interface CommentRow {
   id: string
+  parent_id: string | null
   author_name: string
   content: string
   created_at: string
@@ -75,12 +84,15 @@ interface CommentRow {
 
 const TERM = 'id, name, slug'
 const AUTHOR = 'author:profiles!posts_author_profile_fkey(id, display_name, avatar_url)'
-const SUMMARY = `id, title, slug, excerpt, cover_image_path, published_at, author_id, category:categories(${TERM}), post_tags(tag:tags(${TERM})), ${AUTHOR}`
+const STATS = 'stats:post_stats(view_count, like_count)'
+const SUMMARY = `id, title, slug, excerpt, cover_image_path, published_at, author_id, category:categories(${TERM}), post_tags(tag:tags(${TERM})), ${AUTHOR}, ${STATS}`
 const DETAIL = `${SUMMARY}, content`
 const ADMIN_POST = `${DETAIL}, status, created_at, updated_at`
 // `post` is an inner join so authors can filter the moderation queue to their own posts.
 const ADMIN_COMMENT =
-  'id, author_name, content, status, created_at, post_id, post:posts!inner(title, slug, author_id)'
+  'id, parent_id, author_name, content, status, created_at, post_id, post:posts!inner(title, slug, author_id)'
+const REPORT =
+  'id, reason, status, created_at, post:posts(id, title, slug), comment:comments(id, content, author_name, status, post:posts(title, slug))'
 
 function toAuthor(row: ProfileRow | null): Author | null {
   return row ? { id: row.id, name: row.display_name, avatarUrl: row.avatar_url } : null
@@ -100,6 +112,8 @@ function toSummary(row: PostRow): PostSummary {
       .filter((tag): tag is TermRow => tag !== null)
       .sort((a, b) => a.name.localeCompare(b.name, 'vi')),
     author: toAuthor(row.author),
+    views: Number(row.stats?.view_count ?? 0),
+    likes: Number(row.stats?.like_count ?? 0),
   }
 }
 
@@ -118,11 +132,15 @@ function toAdminPost(row: PostRow): AdminPost {
   }
 }
 
-type PublicCommentRow = Pick<CommentRow, 'id' | 'author_name' | 'content' | 'created_at'>
+type PublicCommentRow = Pick<
+  CommentRow,
+  'id' | 'parent_id' | 'author_name' | 'content' | 'created_at'
+>
 
 function toComment(row: PublicCommentRow): Comment {
   return {
     id: row.id,
+    parentId: row.parent_id,
     authorName: row.author_name,
     content: row.content,
     createdAt: row.created_at,
@@ -187,6 +205,53 @@ async function removeImage(path: string | null | undefined) {
     .catch(() => undefined)
 }
 
+interface ReportRow {
+  id: string
+  reason: string
+  status: 'open' | 'resolved' | 'dismissed'
+  created_at: string
+  post: { id: string; title: string; slug: string } | null
+  comment: {
+    id: string
+    content: string
+    author_name: string
+    status: 'approved' | 'rejected'
+    post: { title: string; slug: string } | null
+  } | null
+}
+
+function toReport(row: ReportRow): Report {
+  return {
+    id: row.id,
+    reason: row.reason,
+    status: row.status.toUpperCase() as ReportStatus,
+    createdAt: row.created_at,
+    post: row.post,
+    comment: row.comment && {
+      id: row.comment.id,
+      content: row.comment.content,
+      authorName: row.comment.author_name,
+      status: row.comment.status.toUpperCase() as CommentStatus,
+      post: row.comment.post,
+    },
+  }
+}
+
+const now = () => new Date().toISOString()
+
+// Margin for a browser clock that runs behind the database's: without it, a post published a
+// moment ago (published_at = server time) would be filtered out of the lists.
+const CLOCK_SKEW_MS = 5 * 60_000
+
+/**
+ * RLS already hides scheduled posts from visitors and other members; only a signed-in author
+ * (or an admin) can read posts scheduled for later, so only then do public lists filter by time.
+ */
+async function scheduledCutoff(): Promise<string | null> {
+  const { data } = await supabase.auth.getSession()
+  return data.session ? new Date(Date.now() + CLOCK_SKEW_MS).toISOString() : null
+}
+
 async function currentUserId(): Promise<string> {
   const { data } = await supabase.auth.getSession()
   const id = data.session?.user.id
@@ -217,6 +282,8 @@ export const publicApi = {
     if (author !== undefined && !UUID.test(author)) return empty
     // Signed-in users can also read their own drafts through RLS, so public pages filter on status.
     let query = supabase.from('posts').select(SUMMARY, { count: 'exact' }).eq('status', 'published')
+    const cutoff = await scheduledCutoff()
+    if (cutoff) query = query.lte('published_at', cutoff)
 
     if (category) {
       const found = unwrap(
@@ -267,16 +334,77 @@ export const publicApi = {
         .select(DETAIL)
         .eq('slug', slug)
         .eq('status', 'published')
+        // No time filter: RLS hides scheduled posts except from their author and admins, who
+        // may preview them; a client-side clock check would 404 a post published a moment ago.
         .maybeSingle(),
     ) as PostRow | null
     return row ? toDetail(row) : notFound()
+  },
+
+  /** Up to three newer posts sharing the category or a tag, newest first. */
+  async related(post: PostDetail): Promise<PostSummary[]> {
+    const filters: string[] = []
+    if (post.category) filters.push(`category_id.eq.${post.category.id}`)
+    if (post.tags.length > 0) {
+      const links = unwrap(
+        await supabase
+          .from('post_tags')
+          .select('post_id')
+          .in(
+            'tag_id',
+            post.tags.map((tag) => tag.id),
+          )
+          .limit(200),
+      ) as { post_id: string }[]
+      const ids = [...new Set(links.map((link) => link.post_id))].filter((id) => id !== post.id)
+      if (ids.length > 0) filters.push(`id.in.(${ids.join(',')})`)
+    }
+    if (filters.length === 0) return []
+    let query = supabase.from('posts').select(SUMMARY).eq('status', 'published')
+    const cutoff = await scheduledCutoff()
+    if (cutoff) query = query.lte('published_at', cutoff)
+    const rows = unwrap(
+      await query
+        .neq('id', post.id)
+        .or(filters.join(','))
+        .order('published_at', { ascending: false })
+        .limit(3),
+    ) as unknown as PostRow[]
+    return rows.map(toSummary)
+  },
+
+  /** Counted at most once per visitor address, post and hour by the database. */
+  async recordView(slug: string): Promise<void> {
+    unwrap(await supabase.rpc('record_post_view', { p_post_slug: slug }))
+  },
+
+  async liked(postId: string): Promise<boolean> {
+    const rows = unwrap(
+      await supabase.from('post_likes').select('post_id').eq('post_id', postId),
+    ) as unknown[]
+    return rows.length > 0
+  },
+
+  async setLiked(postId: string, liked: boolean): Promise<void> {
+    if (liked) unwrap(await supabase.from('post_likes').insert({ post_id: postId }))
+    else unwrap(await supabase.from('post_likes').delete().eq('post_id', postId))
+  },
+
+  async report(target: ReportTarget, reason: string): Promise<void> {
+    unwrap(
+      await supabase.rpc('report_content', {
+        p_post_id: 'postId' in target ? target.postId : null,
+        p_comment_id: 'commentId' in target ? target.commentId : null,
+        p_reason: reason,
+      }),
+    )
   },
 
   async comments(slug: string): Promise<Comment[]> {
     const rows = unwrap(
       await supabase
         .from('comments')
-        .select('id, author_name, content, created_at, posts!inner(slug)')
+        .select('id, parent_id, author_name, content, created_at, posts!inner(slug)')
         .eq('posts.slug', slug)
         .eq('status', 'approved')
         .order('created_at', { ascending: true }),
@@ -286,13 +414,14 @@ export const publicApi = {
 
   async submitComment(
     slug: string,
-    body: { authorName: string; content: string },
+    body: { authorName: string; content: string; parentId?: string },
   ): Promise<{ id: string; status: CommentStatus }> {
     const id = unwrap(
       await supabase.rpc('submit_comment', {
         p_post_slug: slug,
         p_author_name: body.authorName,
         p_content: body.content,
+        p_parent_id: body.parentId ?? null,
       }),
     ) as string
     return { id, status: 'APPROVED' }
@@ -331,9 +460,10 @@ export const authApi = {
     const { data } = await supabase.auth.getSession()
     const user = data.session?.user
     if (!user) return null
-    const [profile, isAdmin] = await Promise.all([
+    const [profile, isAdmin, suspended] = await Promise.all([
       supabase.from('profiles').select('display_name, avatar_url').eq('id', user.id).maybeSingle(),
       supabase.rpc('get_my_admin_status'),
+      supabase.rpc('get_my_suspension_status'),
     ])
     const row = profile.data as Pick<ProfileRow, 'display_name' | 'avatar_url'> | null
     return {
@@ -342,7 +472,19 @@ export const authApi = {
       name: row?.display_name ?? user.email ?? 'Thành viên',
       avatarUrl: row?.avatar_url ?? null,
       isAdmin: isAdmin.data === true,
+      suspended: suspended.data === true,
     }
+  },
+
+  async updateProfile(userId: string, body: ProfileInput): Promise<void> {
+    const rows = unwrap(
+      await supabase
+        .from('profiles')
+        .update({ display_name: body.name, avatar_url: body.avatarUrl })
+        .eq('id', userId)
+        .select('id'),
+    ) as unknown[]
+    if (rows.length === 0) throw new ApiError(403, 'Bạn không có quyền sửa hồ sơ này.')
   },
 }
 
@@ -358,6 +500,8 @@ function toPostRow(body: PostInput) {
     cover_image_path: body.coverImagePath ?? null,
     status: body.status === 'PUBLISHED' ? 'published' : 'draft',
     category_id: body.categoryId,
+    // null lets the database stamp the publish time; omitted keeps the stored one.
+    ...(body.publishedAt !== undefined ? { published_at: body.publishedAt } : {}),
     // An omitted slug keeps the stored one; on insert the database generates it from the title.
     ...(body.slug ? { slug: body.slug } : {}),
   }
@@ -482,7 +626,7 @@ export const adminApi = {
   async stats(user: User): Promise<DashboardStats> {
     const mine = () =>
       supabase.from('posts').select('id', { count: 'exact', head: true }).eq('author_id', user.id)
-    const [posts, drafts, sitePosts, members] = await Promise.all([
+    const [posts, drafts, sitePosts, members, openReports] = await Promise.all([
       count(mine()),
       count(mine().eq('status', 'draft')),
       user.isAdmin
@@ -491,12 +635,84 @@ export const adminApi = {
       user.isAdmin
         ? count(supabase.from('profiles').select('id', { count: 'exact', head: true }))
         : Promise.resolve(0),
+      user.isAdmin
+        ? count(
+            supabase
+              .from('reports')
+              .select('id', { count: 'exact', head: true })
+              .eq('status', 'open'),
+          )
+        : Promise.resolve(0),
     ])
     return {
       posts,
       drafts,
-      site: user.isAdmin ? { posts: sitePosts, members } : null,
+      site: user.isAdmin ? { posts: sitePosts, members, openReports } : null,
     }
+  },
+
+  async reports({ page = 1, status }: { page?: number; status?: ReportStatus }) {
+    let query = supabase.from('reports').select(REPORT, { count: 'exact' })
+    if (status) query = query.eq('status', status.toLowerCase())
+    const result = await query.order('created_at', { ascending: false }).range(...range(page))
+    return toPage(result, page, toReport)
+  },
+
+  async setReportStatus(id: string, status: ReportStatus): Promise<void> {
+    const open = status === 'OPEN'
+    unwrap(
+      await supabase
+        .from('reports')
+        .update({
+          status: status.toLowerCase(),
+          resolved_at: open ? null : now(),
+          resolved_by: open ? null : await currentUserId(),
+        })
+        .eq('id', id),
+    )
+  },
+
+  async members({ page = 1, q }: { page?: number; q?: string }): Promise<Page<Member>> {
+    const rows = unwrap(
+      await supabase.rpc('admin_list_users', { p_query: q?.trim() || null, p_page: page }),
+    ) as {
+      id: string
+      display_name: string
+      avatar_url: string | null
+      email: string | null
+      created_at: string
+      post_count: number
+      is_admin: boolean
+      suspended_at: string | null
+      suspended_reason: string | null
+      total: number
+    }[]
+    return {
+      items: rows.map((row) => ({
+        id: row.id,
+        name: row.display_name,
+        avatarUrl: row.avatar_url,
+        email: row.email ?? '',
+        createdAt: row.created_at,
+        postCount: Number(row.post_count),
+        isAdmin: row.is_admin,
+        suspendedAt: row.suspended_at,
+        suspendedReason: row.suspended_reason,
+      })),
+      total: Number(rows[0]?.total ?? 0),
+      page,
+      limit: MEMBERS_PAGE_SIZE,
+    }
+  },
+
+  async setSuspended(userId: string, suspended: boolean, reason?: string): Promise<void> {
+    unwrap(
+      await supabase.rpc('admin_set_suspended', {
+        p_user: userId,
+        p_suspended: suspended,
+        p_reason: reason ?? null,
+      }),
+    )
   },
 
   /**

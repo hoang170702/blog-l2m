@@ -1,4 +1,4 @@
-import { copyFileSync } from 'node:fs'
+import { copyFileSync, writeFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import tailwindcss from '@tailwindcss/vite'
 import react from '@vitejs/plugin-react'
@@ -8,10 +8,12 @@ import { defineConfig, loadEnv, type Plugin } from 'vite'
  * Production-only hardening for static hosting (GitLab Pages has no custom headers):
  * a CSP meta tag limited to this site and the Supabase project, and a 404.html copy of
  * index.html so deep links still load the SPA. Dev mode is left alone because the React
- * refresh runtime injects an inline script.
+ * refresh runtime injects an inline script. It also links the RSS feed and writes robots.txt
+ * pointing at the sitemap, both served by the `feed` Edge Function (supabase/functions/feed).
  */
 function staticHosting(supabaseUrl: string): Plugin {
   let outDir = 'dist'
+  const feedUrl = `${supabaseUrl}/functions/v1/feed`
   const csp = [
     "default-src 'self'",
     "script-src 'self'",
@@ -36,9 +38,23 @@ function staticHosting(supabaseUrl: string): Plugin {
         attrs: { 'http-equiv': 'Content-Security-Policy', content: csp },
         injectTo: 'head-prepend',
       },
+      {
+        tag: 'link',
+        attrs: {
+          rel: 'alternate',
+          type: 'application/rss+xml',
+          title: 'L2M Blog',
+          href: `${feedUrl}/rss.xml`,
+        },
+        injectTo: 'head',
+      },
     ],
     closeBundle() {
       copyFileSync(resolve(outDir, 'index.html'), resolve(outDir, '404.html'))
+      writeFileSync(
+        resolve(outDir, 'robots.txt'),
+        `User-agent: *\nDisallow: /dashboard\nDisallow: /write\n\nSitemap: ${feedUrl}/sitemap.xml\n`,
+      )
     },
   }
 }

@@ -14,6 +14,9 @@ import { MarkdownToolbar } from '../../components/MarkdownToolbar'
 import { Markdown } from '../../components/Markdown'
 import { useAuth } from '../../auth/AuthContext'
 import { Empty, ErrorMessage, Spinner } from '../../components/Status'
+import { autosaveKey } from '../../lib/autosave'
+import { formatDate } from '../../lib/format'
+import { isFuture, isLive } from '../../lib/schedule'
 import { applyAction, shortcuts } from '../../lib/markdownEdit'
 import { postImageUrl } from '../../lib/supabase'
 import { useDocumentTitle } from '../../lib/useDocumentTitle'
@@ -44,6 +47,34 @@ function toInput(post: AdminPost): PostInput {
 
 const sameInput = (a: PostInput, b: PostInput) => JSON.stringify(a) === JSON.stringify(b)
 
+/** `<input type="datetime-local">` value (local time, minutes) for an ISO time. */
+function toLocalInput(iso: string) {
+  const date = new Date(iso)
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString().slice(0, 16)
+}
+
+/** A future publish time as an input value, or '' when the post is (or will be) published now. */
+function scheduleOf(post: AdminPost | undefined) {
+  return post?.publishedAt && isFuture(post.publishedAt) ? toLocalInput(post.publishedAt) : ''
+}
+
+interface Autosave {
+  post: PostInput
+  schedule: string
+  savedAt: string
+}
+
+const AUTOSAVE_DELAY_MS = 2000
+
+function readAutosave(key: string): Autosave | null {
+  try {
+    const value = JSON.parse(localStorage.getItem(key) ?? 'null') as Autosave | null
+    return value?.post && typeof value.schedule === 'string' ? value : null
+  } catch {
+    return null
+  }
+}
+
 function imageFiles(list: FileList | null | undefined) {
   return Array.from(list ?? []).filter((file) => file.type.startsWith('image/'))
 }
@@ -71,8 +102,10 @@ export function PostEditorPage() {
       key={id ?? 'new'}
       id={id}
       initial={initial}
+      initialSchedule={scheduleOf(existing.data)}
       wasPublished={existing.data?.status === 'PUBLISHED'}
       slug={existing.data?.slug}
+      userId={user!.id}
     />
   )
 }
@@ -80,17 +113,29 @@ export function PostEditorPage() {
 function PostForm({
   id,
   initial,
+  initialSchedule,
   wasPublished,
   slug,
+  userId,
 }: {
   id?: string
   initial: PostInput
+  initialSchedule: string
   wasPublished: boolean
   slug?: string
+  userId: string
 }) {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [post, setPost] = useState(initial)
+  const [schedule, setSchedule] = useState(initialSchedule)
+  const storageKey = autosaveKey(userId, id)
+  const [restorable, setRestorable] = useState(() => {
+    const stored = readAutosave(storageKey)
+    return stored && (!sameInput(stored.post, initial) || stored.schedule !== initialSchedule)
+      ? stored
+      : null
+  })
   const [tab, setTab] = useState<'write' | 'preview'>('write')
   const [dragging, setDragging] = useState(false)
   const [uploads, setUploads] = useState(0)
@@ -106,7 +151,19 @@ function PostForm({
   const tags = useQuery({ queryKey: ['terms', 'tags'], queryFn: () => publicApi.terms('tags') })
 
   // Unsaved-changes guard: in-app navigation asks first, tab close/reload gets the browser prompt.
-  const dirty = !sameInput(post, initial)
+  const dirty = !sameInput(post, initial) || schedule !== initialSchedule
+  const scheduled = schedule !== '' && isFuture(schedule)
+
+  // Autosave to this browser every few seconds while there are unsaved changes; the copy is
+  // offered back on the next visit and dropped once the post is saved or the changes discarded.
+  useEffect(() => {
+    if (!dirty || restorable) return
+    const timer = setTimeout(() => {
+      const value: Autosave = { post, schedule, savedAt: new Date().toISOString() }
+      localStorage.setItem(storageKey, JSON.stringify(value))
+    }, AUTOSAVE_DELAY_MS)
+    return () => clearTimeout(timer)
+  }, [dirty, restorable, post, schedule, storageKey])
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
       dirty && !saved.current && currentLocation.pathname !== nextLocation.pathname,
@@ -116,9 +173,11 @@ function PostForm({
   })
   useEffect(() => {
     if (blocker.state !== 'blocked') return
-    if (confirm('Bài viết có thay đổi chưa lưu. Rời trang và bỏ các thay đổi?')) blocker.proceed()
-    else blocker.reset()
-  }, [blocker])
+    if (confirm('Bài viết có thay đổi chưa lưu. Rời trang và bỏ các thay đổi?')) {
+      localStorage.removeItem(storageKey)
+      blocker.proceed()
+    } else blocker.reset()
+  }, [blocker, storageKey])
 
   const save = useMutation({
     mutationFn: (status: PostStatus) => {
@@ -128,11 +187,18 @@ function PostForm({
         excerpt: post.excerpt || undefined,
         coverImagePath: post.coverImagePath || undefined,
         slug: post.slug || undefined,
+        // A chosen time is kept as is; clearing a future one publishes now (null); else unchanged.
+        publishedAt: schedule
+          ? new Date(schedule).toISOString()
+          : initialSchedule
+            ? null
+            : undefined,
       }
       return id ? adminApi.updatePost(id, body) : adminApi.createPost(body)
     },
     onSuccess: async (result) => {
       saved.current = true
+      localStorage.removeItem(storageKey)
       queryClient.setQueryData(['admin-post', result.id], result)
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['admin-posts'] }),
@@ -140,7 +206,7 @@ function PostForm({
         queryClient.invalidateQueries({ queryKey: ['posts'] }),
         queryClient.invalidateQueries({ queryKey: ['post', result.slug] }),
       ])
-      navigate(result.status === 'PUBLISHED' ? `/posts/${result.slug}` : '/dashboard/posts')
+      navigate(isLive(result) ? `/posts/${result.slug}` : '/dashboard/posts')
     },
   })
 
@@ -197,6 +263,11 @@ function PostForm({
     save.mutate('PUBLISHED')
   }
 
+  let submitLabel = '🚀 Đăng bài'
+  if (save.isPending) submitLabel = 'Đang lưu…'
+  else if (scheduled) submitLabel = '⏰ Hẹn đăng'
+  else if (wasPublished) submitLabel = 'Cập nhật bài'
+
   const words = post.content.trim() ? post.content.trim().split(/\s+/).length : 0
   const coverUrl = post.coverImagePath ? postImageUrl(post.coverImagePath) : null
 
@@ -218,6 +289,43 @@ function PostForm({
           </Link>
         )}
       </div>
+
+      {restorable && (
+        <div
+          role="status"
+          className="flex flex-wrap items-center gap-3 rounded-2xl bg-secondary-soft px-5 py-3 text-sm"
+        >
+          <span className="flex-1">
+            Có bản lưu tạm chưa đăng từ {formatDate(restorable.savedAt)}{' '}
+            {new Date(restorable.savedAt).toLocaleTimeString('vi-VN', {
+              hour: '2-digit',
+              minute: '2-digit',
+            })}
+            .
+          </span>
+          <button
+            type="button"
+            className="font-semibold text-primary hover:underline"
+            onClick={() => {
+              setPost(restorable.post)
+              setSchedule(restorable.schedule)
+              setRestorable(null)
+            }}
+          >
+            Khôi phục
+          </button>
+          <button
+            type="button"
+            className="font-semibold text-muted hover:underline"
+            onClick={() => {
+              localStorage.removeItem(storageKey)
+              setRestorable(null)
+            }}
+          >
+            Bỏ qua
+          </button>
+        </div>
+      )}
 
       <div className="grid gap-5 xl:grid-cols-[1fr_20rem]">
         <div className="min-w-0 space-y-4">
@@ -459,13 +567,26 @@ function PostForm({
           </div>
 
           <div className="card space-y-3 p-5">
+            <label className="block text-sm font-bold">
+              Hẹn giờ đăng
+              <input
+                type="datetime-local"
+                value={schedule}
+                onChange={(e) => setSchedule(e.target.value)}
+                aria-label="Hẹn giờ đăng"
+                className="input mt-2 py-2 font-normal"
+              />
+              <span className="mt-1 block text-xs font-normal text-muted">
+                Để trống để đăng ngay. Bài hẹn giờ chỉ hiện với mọi người khi tới giờ.
+              </span>
+            </label>
             {save.isError && <ErrorMessage error={save.error} />}
             <button
               type="submit"
               disabled={save.isPending || uploads > 0}
               className="btn-primary w-full py-3"
             >
-              {save.isPending ? 'Đang lưu…' : wasPublished ? 'Cập nhật bài' : '🚀 Đăng bài'}
+              {submitLabel}
             </button>
             <button
               type="button"
@@ -479,7 +600,9 @@ function PostForm({
               {wasPublished ? 'Chuyển về nháp' : 'Lưu nháp'}
             </button>
             <p className="text-center text-xs text-muted">
-              Bấm đăng là bài hiện ngay cho mọi người đọc.
+              {scheduled
+                ? `Bài sẽ hiện cho mọi người lúc ${new Date(schedule).toLocaleString('vi-VN')}.`
+                : 'Bấm đăng là bài hiện ngay cho mọi người đọc.'}
             </p>
           </div>
         </aside>

@@ -7,6 +7,7 @@ import { Pagination } from '../../components/Pagination'
 import { Empty, ErrorMessage, Spinner } from '../../components/Status'
 import { useDocumentTitle } from '../../lib/useDocumentTitle'
 import { formatDate } from '../../lib/format'
+import { isLive } from '../../lib/schedule'
 import { StatusBadge } from './DashboardPage'
 
 export function PostsPage() {
@@ -122,11 +123,20 @@ export function PostsPage() {
                     {all && post.author && <>{post.author.name} · </>}
                     Cập nhật {formatDate(post.updatedAt)}
                     {post.category && <> · {post.category.name}</>}
+                    {post.status === 'PUBLISHED' && (
+                      <>
+                        {' '}
+                        · {post.views} lượt xem · {post.likes} lượt thích
+                      </>
+                    )}
                   </p>
                 </div>
-                <StatusBadge published={post.status === 'PUBLISHED'} />
+                <StatusBadge
+                  published={post.status === 'PUBLISHED'}
+                  publishedAt={post.publishedAt}
+                />
                 <div className="flex gap-3 text-sm font-semibold">
-                  {post.status === 'PUBLISHED' && (
+                  {isLive(post) && (
                     <Link to={`/posts/${post.slug}`} className="text-muted hover:text-primary">
                       Xem
                     </Link>

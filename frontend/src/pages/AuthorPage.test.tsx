@@ -32,6 +32,8 @@ const post: PostSummary = {
   category: null,
   tags: [],
   author: lan,
+  views: 0,
+  likes: 0,
 }
 
 function renderAuthorPage(id: string) {

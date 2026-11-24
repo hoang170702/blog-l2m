@@ -17,7 +17,7 @@ interface SupabaseLikeError {
 
 // PostgreSQL / PostgREST codes raised by our schema and RPCs (see supabase/migrations).
 const knownErrors: Record<string, [number, string]> = {
-  P0429: [429, 'Bạn gửi quá nhanh, vui lòng thử lại sau một phút.'],
+  P0429: [429, 'Bạn thao tác quá nhanh, vui lòng thử lại sau ít phút.'],
   P0002: [404, 'Không tìm thấy bài viết.'],
   '23505': [409, 'Tên hoặc slug đã tồn tại.'],
   '23514': [400, 'Dữ liệu không hợp lệ.'],
