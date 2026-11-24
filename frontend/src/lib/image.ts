@@ -58,35 +58,73 @@ export function outputSize(crop: CropRect, shape: ImageShape) {
   return { width, height: Math.max(1, Math.round(width / ratio)) }
 }
 
-/**
- * Draws the crop at the target size. Large reductions are done in halving steps with
- * high-quality smoothing: a single big step makes browsers sample coarsely, which blurs and
- * roughens edges.
- */
-function drawCrop(source: CanvasImageSource, crop: CropRect, width: number, height: number) {
+/** Halves the image until it is at most twice the target width, smoothing each step. */
+function downscale(source: CanvasImageSource, width: number, height: number, target: number) {
   let current: CanvasImageSource = source
-  let { sx, sy, sw, sh } = crop
-  while (sw / 2 >= width && sh / 2 >= height) {
+  while (width / 2 >= target) {
     const step = document.createElement('canvas')
-    step.width = Math.round(sw / 2)
-    step.height = Math.round(sh / 2)
+    step.width = Math.round(width / 2)
+    step.height = Math.round(height / 2)
     const context = step.getContext('2d')
     if (!context) break
     context.imageSmoothingQuality = 'high'
-    context.drawImage(current, sx, sy, sw, sh, 0, 0, step.width, step.height)
+    context.drawImage(current, 0, 0, width, height, 0, 0, step.width, step.height)
     current = step
-    sx = 0
-    sy = 0
-    sw = step.width
-    sh = step.height
+    width = step.width
+    height = step.height
   }
+  return { image: current, width, height }
+}
+
+/**
+ * Draws the crop at the target size. Large reductions go in halving steps with high-quality
+ * smoothing: one big step makes browsers sample coarsely, which blurs and roughens edges.
+ * A crop reaching past the picture (zoomed out) gets a blurred copy of it behind, built by
+ * shrinking it to a few pixels and stretching it back, which works in every browser.
+ */
+function drawCrop(source: ImageBitmap, crop: CropRect, width: number, height: number) {
+  const scale = width / crop.sw
+  const down = downscale(source, source.width, source.height, source.width * scale)
   const canvas = document.createElement('canvas')
   canvas.width = width
   canvas.height = height
   const context = canvas.getContext('2d')
   if (!context) throw new Error('Trình duyệt không xử lý được ảnh.')
   context.imageSmoothingQuality = 'high'
-  context.drawImage(current, sx, sy, sw, sh, 0, 0, width, height)
+
+  const outside =
+    crop.sx < 0 ||
+    crop.sy < 0 ||
+    crop.sx + crop.sw > source.width ||
+    crop.sy + crop.sh > source.height
+  if (outside) {
+    const tiny = document.createElement('canvas')
+    tiny.width = 24
+    tiny.height = Math.max(1, Math.round(24 / (width / height)))
+    const fit = Math.max(tiny.width / down.width, tiny.height / down.height)
+    const tinyContext = tiny.getContext('2d')
+    if (tinyContext) {
+      tinyContext.drawImage(
+        down.image,
+        (tiny.width - down.width * fit) / 2,
+        (tiny.height - down.height * fit) / 2,
+        down.width * fit,
+        down.height * fit,
+      )
+      context.drawImage(tiny, 0, 0, width, height)
+    }
+  }
+  context.drawImage(
+    down.image,
+    0,
+    0,
+    down.width,
+    down.height,
+    -crop.sx * scale,
+    -crop.sy * scale,
+    source.width * scale,
+    source.height * scale,
+  )
   return canvas
 }
 

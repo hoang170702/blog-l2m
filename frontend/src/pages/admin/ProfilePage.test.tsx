@@ -60,7 +60,7 @@ describe('ProfilePage', () => {
     )
     // The crop dialog opens first; jsdom loads no pixels, so give the image a size.
     const dialog = await screen.findByRole('dialog', { name: 'Chọn vùng ảnh' })
-    const img = dialog.querySelector('img')!
+    const img = dialog.querySelector('img:not([aria-hidden])')!
     Object.defineProperty(img, 'naturalWidth', { value: 1200 })
     Object.defineProperty(img, 'naturalHeight', { value: 800 })
     fireEvent.load(img)

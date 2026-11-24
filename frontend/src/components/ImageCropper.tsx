@@ -3,8 +3,10 @@ import {
   centeredView,
   clampView,
   cropRect,
-  MAX_ZOOM,
+  minZoom,
+  sliderToZoom,
   viewScale,
+  zoomToSlider,
   zoomView,
   type CropView,
   type Size,
@@ -108,9 +110,17 @@ export function ImageCropper({
           onPointerUp={endDrag}
           onPointerCancel={endDrag}
           onWheel={(event) => {
-            if (ready) setView(zoomView(view, view.zoom - event.deltaY / 500, image, frame))
+            if (ready) setView(zoomView(view, view.zoom * (1 - event.deltaY / 500), image, frame))
           }}
         >
+          {/* Shown around a zoomed-out picture, like the blurred fill drawn when it is saved. */}
+          <img
+            src={url}
+            alt=""
+            aria-hidden="true"
+            draggable={false}
+            className="absolute inset-0 h-full w-full scale-110 object-cover opacity-80 blur-xl"
+          />
           <img
             src={url}
             alt=""
@@ -135,22 +145,33 @@ export function ImageCropper({
         </div>
         <label className="flex items-center gap-3 text-sm font-semibold">
           Thu phóng
+          <span aria-hidden="true">−</span>
           <input
             type="range"
-            min={1}
-            max={MAX_ZOOM}
+            min={-1}
+            max={1}
             step={0.01}
-            value={view?.zoom ?? 1}
+            value={ready ? zoomToSlider(view.zoom, minZoom(image, frame)) : 0}
             disabled={!ready}
             onChange={(event) =>
-              ready && setView(zoomView(view, Number(event.target.value), image, frame))
+              ready &&
+              setView(
+                zoomView(
+                  view,
+                  sliderToZoom(Number(event.target.value), minZoom(image, frame)),
+                  image,
+                  frame,
+                ),
+              )
             }
             className="flex-1 accent-primary"
             aria-label="Thu phóng"
           />
+          <span aria-hidden="true">+</span>
         </label>
         <p className="text-xs text-muted">
-          Kéo ảnh để chọn góc, kéo thanh trượt hoặc cuộn chuột để phóng to.
+          Kéo ảnh để chọn góc. Thanh trượt ở giữa là vừa khung: sang phải để phóng to, sang trái để
+          thu nhỏ giữ nguyên cả ảnh (phần trống được phủ bằng ảnh làm mờ).
           {lowResolution && (
             <span className="block font-semibold text-secondary-dark">
               Vùng chọn nhỏ hơn khung hiển thị nên ảnh có thể hơi mờ; thu nhỏ lại hoặc dùng ảnh gốc
