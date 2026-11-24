@@ -86,7 +86,7 @@ Schema changes go in a new file under `supabase/migrations/` (`npx supabase migr
 1. **Read**: open the home page, filter by category or tag, or search. On a post, use the table of contents, like it (signed in), comment or reply without an account, or report it.
 2. **Write**: sign in with Google or GitHub and click **Viết bài**. Write Markdown, drop or paste an image to set the cover, pick a category and tags. **Đăng bài** publishes now; filling **Hẹn giờ đăng** publishes later; **Lưu nháp** keeps it private. Leaving with unsaved changes asks first, and an autosaved copy is offered when you come back.
 3. **Manage**: `/dashboard` shows your posts (with views and likes), the comments on them and your profile. Edit or delete a post from the list or from its page.
-4. **Administer**: grant the first admin with `psql "$DIRECT_URL" -v "email=<email>" -f scripts/bootstrap-site-admin.sql` (revoke with `scripts/revoke-site-admin.sql`). Admins see **Quản trị** in the dashboard menu: categories, tags, reports and members.
+4. **Administer**: an admin is granted once per environment (Deployment, step 6). Admins see **Quản trị** in the dashboard menu: categories, tags, reports and members.
 
 ## Checks
 
@@ -101,19 +101,89 @@ Schema changes go in a new file under `supabase/migrations/` (`npx supabase migr
 
 ## Deployment
 
-Each environment (UAT, production) is its own Supabase project plus a static host for `frontend/dist`.
+Production runs on GitHub Pages plus one Supabase project. Current values:
 
-1. Create the Supabase project, link it and apply migrations: `npx supabase link --project-ref <ref>`, then `npx supabase db push` (never run `seed.sql` there).
-2. Auth: set the Site URL to the site origin, add `<site>/auth/callback` to the redirect URLs, and enable Google and GitHub with that environment's OAuth apps.
-3. Feed: `npx supabase secrets set SITE_URL=https://<domain>`, then `npx supabase functions deploy feed --no-verify-jwt`.
-4. GitHub Pages (this repository): `.github/workflows/deploy-pages.yml` lints, tests and builds on every push to `main` and publishes `frontend/dist` under `https://<owner>.github.io/<repository>/` (`VITE_BASE_PATH`). Set the repository variables `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, and choose **GitHub Actions** as the Pages source. Use `https://<owner>.github.io/<repository>/` as the Auth Site URL and `…/auth/callback` as the redirect URL, and the same origin plus path as `SITE_URL` for the feed. Deep links are served through `404.html`, so they load correctly in browsers but answer with HTTP 404, which search engines index poorly; a custom domain does not change that.
-5. Any other static host: build the frontend with that project's `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (`npm run build` in `frontend/`) and publish `frontend/dist` to any static host; `404.html` and `public/_redirects` cover SPA routing.
-6. Grant the first admin (Usage guide, step 4).
+| Setting | Value |
+| --- | --- |
+| Site | https://hoang170702.github.io/blog-l2m/ |
+| Supabase project ref | `rguionpzijghrxnkcqoz` |
+| Supabase API URL | `https://rguionpzijghrxnkcqoz.supabase.co` |
+| OAuth callback (GitHub, Google) | `https://rguionpzijghrxnkcqoz.supabase.co/auth/v1/callback` |
+| RSS / sitemap | `https://rguionpzijghrxnkcqoz.supabase.co/functions/v1/feed/rss.xml`, `…/sitemap.xml` |
 
-Apply migrations before publishing a frontend that needs them. Secrets (database password, service key, OAuth secrets) never go in the repository: only `*.example` files are committed.
+For another environment, replace `<ref>` (Supabase project ref) and `<site>` (public URL with its path and a trailing slash, for example `https://<owner>.github.io/<repository>/`) below. Secrets (database password, service key, OAuth client secrets) never go in the repository or in chat: they are typed into the Supabase Dashboard or the CLI prompt. Only `*.example` files are committed.
+
+### 1. Supabase project and database
+
+1. Create the project at https://supabase.com/dashboard (region close to readers, for example Singapore; it cannot be changed later) and keep the database password.
+2. From the repository root:
+
+   ```bash
+   npx supabase login
+   npx supabase link --project-ref <ref>     # asks for the database password
+   npx supabase db push --remote             # applies supabase/migrations; never run seed.sql there
+   ```
+
+   Projects created with "auto-expose new tables" off grant nothing to the API roles, so every migration that creates a table must grant its privileges explicitly (see `20261124120000_explicit_api_grants.sql`).
+3. RSS and sitemap:
+
+   ```bash
+   npx supabase secrets set SITE_URL=<site without the trailing slash> --remote=<ref>
+   npx supabase functions deploy feed --no-verify-jwt --remote=<ref>
+   ```
+
+Always apply migrations before pushing a frontend that needs them.
+
+### 2. Auth URLs
+
+Open `https://supabase.com/dashboard/project/<ref>/auth/url-configuration`:
+- **Site URL**: `<site>`
+- **Redirect URLs**: add `<site>auth/callback`
+
+### 3. GitHub sign-in
+
+1. Create an OAuth App at https://github.com/settings/applications/new (one app per environment, because GitHub allows one callback URL):
+   - Homepage URL: `<site>`
+   - Authorization callback URL: `https://<ref>.supabase.co/auth/v1/callback`
+2. Copy the Client ID, generate a client secret.
+3. In `https://supabase.com/dashboard/project/<ref>/auth/providers`, enable **GitHub** and paste both values.
+
+### 4. Google sign-in
+
+1. Pick or create a Google Cloud project: https://console.cloud.google.com/projectcreate
+2. Consent screen (https://console.cloud.google.com/auth/branding): app name `L2M Blog`, support and developer email, audience **External**, authorized domains: the site's host (for example `hoang170702.github.io`) and `<ref>.supabase.co`.
+3. Audience (https://console.cloud.google.com/auth/audience): **Publish app** so any Google account can sign in; in testing mode only the listed test users can.
+4. Scopes (https://console.cloud.google.com/auth/scopes): only `openid`, `userinfo.email`, `userinfo.profile` (no verification needed).
+5. Client (https://console.cloud.google.com/auth/clients/create): type **Web application**,
+   - Authorized JavaScript origins: the site's origin without a path (`https://hoang170702.github.io`)
+   - Authorized redirect URIs: `https://<ref>.supabase.co/auth/v1/callback`
+6. In `https://supabase.com/dashboard/project/<ref>/auth/providers`, enable **Google** and paste the Client ID and secret. Google can take a few minutes to accept a new redirect URI (`redirect_uri_mismatch` meanwhile).
+
+### 5. GitHub Pages
+
+`.github/workflows/deploy-pages.yml` runs lint, typecheck, tests and the build on every push to `main`, then publishes `frontend/dist` under `/<repository>/` (`VITE_BASE_PATH`).
+
+1. Repository **Settings → Pages → Source**: **GitHub Actions**.
+2. **Settings → Secrets and variables → Actions → Variables**: `VITE_SUPABASE_URL` (`https://<ref>.supabase.co`) and `VITE_SUPABASE_ANON_KEY` (the project's public anon key: `npx supabase projects api-keys --project-ref <ref>`, row `anon`). Never use the `service_role` or secret key here.
+3. Push to `main` (or run the workflow by hand from the Actions tab).
+
+Deep links are served through `404.html`: they work in browsers but answer HTTP 404, which search engines index poorly, and `robots.txt` under a project path is not read by crawlers. Submit the sitemap URL in Google Search Console instead. Any other static host works too: build with the two `VITE_SUPABASE_*` variables (and `VITE_BASE_PATH` when served under a path) and publish `frontend/dist`; `404.html` and `public/_redirects` cover SPA routing.
+
+### 6. First admin
+
+1. Sign in once on `<site>login` with GitHub or Google (this creates the account).
+2. In the SQL editor (`https://supabase.com/dashboard/project/<ref>/sql/new`) run, with that account's email:
+
+   ```sql
+   insert into private.site_admins (user_id)
+   select id from auth.users where lower(email) = lower('you@example.com')
+   on conflict (user_id) do nothing;
+   ```
+
+   (or `psql "$DIRECT_URL" -v "email=you@example.com" -f scripts/bootstrap-site-admin.sql`). Sign out and in again; the dashboard menu then shows **Quản trị**. Revoke with `scripts/revoke-site-admin.sql`.
 
 ## Status
 
 - The app runs fully on Supabase; the NestJS backend was removed. The VPS/Docker files (`deploy/`, `docker-compose.yml`, `frontend/Dockerfile`, `frontend/nginx/`) and `docs/api.md`, `docs/deploy.md`, `docs/security.md` and `AGENTS.md` still describe that earlier stack and are due for removal or rewrite.
-- `.gitlab-ci.yml` still includes the earlier fullstack pipeline template; a pipeline for static hosting with Supabase migrations is planned.
+- GitHub Pages deploys the frontend only; database migrations and the feed function are applied by hand (Deployment, step 1). `.gitlab-ci.yml` still includes the earlier GitLab fullstack pipeline template.
 - Not done yet: a scheduled clean-up of cover images uploaded but never saved. More ideas are in `docs/ideas.md`.
