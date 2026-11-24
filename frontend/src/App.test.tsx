@@ -72,6 +72,9 @@ const member = (overrides: Partial<User> = {}): User => ({
   avatarUrl: null,
   isAdmin: false,
   suspended: false,
+  bio: null,
+  avatarPath: null,
+  providerAvatarUrl: null,
   ...overrides,
 })
 

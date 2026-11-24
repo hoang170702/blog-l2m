@@ -8,6 +8,8 @@ export interface Author {
   id: string
   name: string
   avatarUrl: string | null
+  /** Short self-description; only loaded for the author page and the profile. */
+  bio?: string | null
 }
 
 export interface PostSummary {
@@ -70,6 +72,11 @@ export interface User {
   isAdmin: boolean
   /** Suspended members still sign in and read, but every write is refused. */
   suspended: boolean
+  bio: string | null
+  /** Uploaded avatar inside the post-images bucket; null shows the sign-in provider's picture. */
+  avatarPath: string | null
+  /** The sign-in provider's picture (Google, GitHub). */
+  providerAvatarUrl: string | null
 }
 
 export type OAuthProvider = 'google' | 'github'
@@ -97,7 +104,8 @@ export interface PostInput {
 
 export interface ProfileInput {
   name: string
-  avatarUrl: string | null
+  bio: string | null
+  avatarPath: string | null
 }
 
 export type ReportStatus = 'OPEN' | 'RESOLVED' | 'DISMISSED'

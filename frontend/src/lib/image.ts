@@ -1,8 +1,12 @@
-/** Client-side cover preparation before upload: the bucket caps files at 2 MiB. */
+/** Client-side image preparation before upload: the bucket caps files at 2 MiB. */
 
 // Every cover uses one 16:9 frame (D37): the home card and the top of the post.
-const COVER_WIDTH = 1600
-const COVER_RATIO = 16 / 9
+// Avatars are square and small.
+const SHAPES = {
+  cover: { ratio: 16 / 9, maxWidth: 1600 },
+  avatar: { ratio: 1, maxWidth: 400 },
+} as const
+export type ImageShape = keyof typeof SHAPES
 const MAX_BYTES = 2 * 1024 * 1024
 const QUALITY = 0.85
 const ALLOWED = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
@@ -17,26 +21,33 @@ function toBlob(canvas: HTMLCanvasElement, type: string): Promise<Blob | null> {
   return new Promise((resolve) => canvas.toBlob(resolve, type, QUALITY))
 }
 
-/** Source rectangle (centered, 16:9) and output size (never upscaled) for a cover. */
-export function coverCrop(sourceWidth: number, sourceHeight: number) {
-  const sw = Math.min(sourceWidth, Math.round(sourceHeight * COVER_RATIO))
-  const sh = Math.min(sourceHeight, Math.round(sw / COVER_RATIO))
-  const width = Math.min(COVER_WIDTH, sw)
+/** Source rectangle (centered, in the shape's ratio) and output size (never upscaled). */
+export function centerCrop(sourceWidth: number, sourceHeight: number, shape: ImageShape) {
+  const { ratio, maxWidth } = SHAPES[shape]
+  const sw = Math.min(sourceWidth, Math.round(sourceHeight * ratio))
+  const sh = Math.min(sourceHeight, Math.round(sw / ratio))
+  const width = Math.min(maxWidth, sw)
   return {
     sx: Math.round((sourceWidth - sw) / 2),
     sy: Math.round((sourceHeight - sh) / 2),
     sw,
     sh,
     width,
-    height: Math.round(width / COVER_RATIO),
+    height: Math.round(width / ratio),
   }
 }
 
+export const coverCrop = (sourceWidth: number, sourceHeight: number) =>
+  centerCrop(sourceWidth, sourceHeight, 'cover')
+
 /**
- * Center-crops to 16:9, scales down to at most 1600x900 and re-encodes as WebP
- * (JPEG where WebP encoding is unsupported).
+ * Center-crops to the shape (cover: 16:9 up to 1600x900; avatar: square up to 400x400) and
+ * re-encodes as WebP (JPEG where WebP encoding is unsupported).
  */
-export async function prepareImage(file: File): Promise<PreparedImage> {
+export async function prepareImage(
+  file: File,
+  shape: ImageShape = 'cover',
+): Promise<PreparedImage> {
   if (!ALLOWED.includes(file.type)) {
     throw new Error('Chỉ hỗ trợ ảnh JPEG, PNG, WebP hoặc GIF.')
   }
@@ -48,7 +59,7 @@ export async function prepareImage(file: File): Promise<PreparedImage> {
   }
 
   const bitmap = await createImageBitmap(file)
-  const crop = coverCrop(bitmap.width, bitmap.height)
+  const crop = centerCrop(bitmap.width, bitmap.height, shape)
   const canvas = document.createElement('canvas')
   canvas.width = crop.width
   canvas.height = crop.height

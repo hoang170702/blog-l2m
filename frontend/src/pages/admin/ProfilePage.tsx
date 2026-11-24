@@ -1,27 +1,42 @@
 import { useMutation } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 import { Link } from 'react-router'
-import { authApi } from '../../api/endpoints'
+import { adminApi, authApi } from '../../api/endpoints'
 import type { User } from '../../api/types'
 import { useAuth } from '../../auth/AuthContext'
 import { Avatar } from '../../components/UserMenu'
 import { ErrorMessage } from '../../components/Status'
+import { postImageUrl } from '../../lib/supabase'
 import { useDocumentTitle } from '../../lib/useDocumentTitle'
+
+const BIO_MAX = 500
 
 export function ProfilePage() {
   useDocumentTitle('Hồ sơ')
   const { user } = useAuth()
-  // Keyed so the form starts from the stored profile again after a save or account switch.
-  return user ? <ProfileForm key={`${user.id}:${user.name}:${user.avatarUrl}`} user={user} /> : null
+  // Keyed so the form starts from the stored profile again after a save or an account switch.
+  return user ? (
+    <ProfileForm key={`${user.id}:${user.name}:${user.avatarPath}:${user.bio}`} user={user} />
+  ) : null
 }
 
 function ProfileForm({ user }: { user: User }) {
   const { refreshUser } = useAuth()
   const [name, setName] = useState(user.name)
-  const [avatarUrl, setAvatarUrl] = useState(user.avatarUrl ?? '')
+  const [bio, setBio] = useState(user.bio ?? '')
+  const [avatarPath, setAvatarPath] = useState(user.avatarPath)
+
+  const upload = useMutation({
+    mutationFn: (file: File) => adminApi.upload(file, 'avatar'),
+    onSuccess: (result) => setAvatarPath(result.path),
+  })
   const save = useMutation({
     mutationFn: () =>
-      authApi.updateProfile(user.id, { name: name.trim(), avatarUrl: avatarUrl.trim() || null }),
+      authApi.updateProfile(
+        user.id,
+        { name: name.trim(), bio: bio.trim() || null, avatarPath },
+        user.avatarPath,
+      ),
     onSuccess: refreshUser,
   })
 
@@ -30,22 +45,46 @@ function ProfileForm({ user }: { user: User }) {
     save.mutate()
   }
 
+  const avatarUrl = avatarPath ? postImageUrl(avatarPath) : user.providerAvatarUrl
+  const dirty =
+    name.trim() !== user.name || (bio.trim() || null) !== user.bio || avatarPath !== user.avatarPath
+
   return (
     <section className="max-w-xl">
       <h1 className="mb-6 text-3xl font-extrabold">Hồ sơ</h1>
-      <form onSubmit={onSubmit} className="card space-y-4 p-6">
-        <div className="flex items-center gap-4">
-          <Avatar
-            user={{ name: name || user.name, avatarUrl: avatarUrl.trim() || null }}
-            size="h-16 w-16"
-          />
-          <div className="text-sm text-muted">
-            <p>{user.email}</p>
-            <Link to={`/u/${user.id}`} className="font-semibold text-primary hover:underline">
-              Xem trang tác giả →
-            </Link>
+      <form onSubmit={onSubmit} className="card space-y-5 p-6">
+        <div className="flex flex-wrap items-center gap-4">
+          <Avatar user={{ name: name || user.name, avatarUrl }} size="h-20 w-20" />
+          <div className="space-y-2 text-sm">
+            <label className="btn-ghost cursor-pointer px-3 py-1.5">
+              {upload.isPending ? 'Đang tải ảnh…' : 'Đổi ảnh đại diện'}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="hidden"
+                aria-label="Ảnh đại diện"
+                disabled={upload.isPending}
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (file) upload.mutate(file)
+                  e.target.value = ''
+                }}
+              />
+            </label>
+            {avatarPath && (
+              <button
+                type="button"
+                className="block font-semibold text-muted hover:text-red-600"
+                onClick={() => setAvatarPath(null)}
+              >
+                {user.providerAvatarUrl ? 'Dùng ảnh từ Google/GitHub' : 'Bỏ ảnh đại diện'}
+              </button>
+            )}
+            <p className="text-xs text-muted">Ảnh được cắt vuông ở giữa, tối đa 400×400.</p>
           </div>
         </div>
+        {upload.isError && <ErrorMessage error={upload.error} />}
+
         <label className="block text-sm font-bold">
           Tên hiển thị
           <input
@@ -57,23 +96,38 @@ function ProfileForm({ user }: { user: User }) {
           />
         </label>
         <label className="block text-sm font-bold">
-          Ảnh đại diện (URL https)
-          <input
-            type="url"
-            pattern="https://.*"
-            value={avatarUrl}
-            onChange={(e) => setAvatarUrl(e.target.value)}
-            placeholder="https://…"
-            className="input mt-2 font-normal"
+          Giới thiệu
+          <textarea
+            rows={4}
+            maxLength={BIO_MAX}
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+            placeholder="Vài dòng về bạn, hiện trên trang tác giả"
+            aria-label="Giới thiệu"
+            className="input mt-2 resize-y font-normal"
           />
+          <span className="mt-1 block text-right text-xs font-normal text-muted">
+            {bio.length}/{BIO_MAX}
+          </span>
         </label>
+
+        <p className="text-sm text-muted">
+          Email đăng nhập: {user.email} ·{' '}
+          <Link to={`/u/${user.id}`} className="font-semibold text-primary hover:underline">
+            Xem trang tác giả →
+          </Link>
+        </p>
         {save.isError && <ErrorMessage error={save.error} />}
-        {save.isSuccess && (
+        {save.isSuccess && !dirty && (
           <p role="status" className="text-sm font-semibold text-green-700">
             Đã lưu hồ sơ.
           </p>
         )}
-        <button type="submit" disabled={save.isPending} className="btn-primary">
+        <button
+          type="submit"
+          disabled={save.isPending || upload.isPending || !dirty}
+          className="btn-primary"
+        >
           {save.isPending ? 'Đang lưu…' : 'Lưu hồ sơ'}
         </button>
       </form>

@@ -1,4 +1,4 @@
-import { coverCrop } from './image'
+import { centerCrop, coverCrop } from './image'
 
 describe('coverCrop', () => {
   it('cuts the middle of a tall photo to 16:9 and scales it to 1600x900', () => {
@@ -31,6 +31,19 @@ describe('coverCrop', () => {
       sh: 450,
       width: 800,
       height: 450,
+    })
+  })
+})
+
+describe('centerCrop for avatars', () => {
+  it('cuts a square from the middle and scales it to 400x400', () => {
+    expect(centerCrop(1200, 800, 'avatar')).toEqual({
+      sx: 200,
+      sy: 0,
+      sw: 800,
+      sh: 800,
+      width: 400,
+      height: 400,
     })
   })
 })

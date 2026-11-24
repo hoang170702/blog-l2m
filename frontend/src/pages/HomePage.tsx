@@ -58,6 +58,9 @@ export function HomePage({ mode = 'all' }: { mode?: Mode }) {
           <div>
             <p className="text-sm font-semibold text-muted">Tác giả</p>
             <h1 className="text-3xl font-extrabold md:text-4xl">{author.data.name}</h1>
+            {author.data.bio && (
+              <p className="mt-2 max-w-2xl whitespace-pre-line text-muted">{author.data.bio}</p>
+            )}
           </div>
         </div>
       ) : mode === 'author' && author.isSuccess ? (

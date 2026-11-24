@@ -4,7 +4,7 @@
  */
 import type { PostgrestError } from '@supabase/supabase-js'
 import { foldVi } from '../lib/fold'
-import { prepareImage } from '../lib/image'
+import { prepareImage, type ImageShape } from '../lib/image'
 import { POST_IMAGES_BUCKET, postImageUrl, supabase } from '../lib/supabase'
 import { ApiError, toApiError, unwrap } from './client'
 import type {
@@ -51,6 +51,8 @@ interface ProfileRow {
   id: string
   display_name: string
   avatar_url: string | null
+  avatar_path: string | null
+  bio?: string | null
 }
 
 interface PostRow {
@@ -83,7 +85,8 @@ interface CommentRow {
 }
 
 const TERM = 'id, name, slug'
-const AUTHOR = 'author:profiles!posts_author_profile_fkey(id, display_name, avatar_url)'
+const PROFILE = 'id, display_name, avatar_url, avatar_path'
+const AUTHOR = `author:profiles!posts_author_profile_fkey(${PROFILE})`
 const STATS = 'stats:post_stats(view_count, like_count)'
 const SUMMARY = `id, title, slug, excerpt, cover_image_path, published_at, author_id, category:categories(${TERM}), post_tags(tag:tags(${TERM})), ${AUTHOR}, ${STATS}`
 const DETAIL = `${SUMMARY}, content`
@@ -94,8 +97,15 @@ const ADMIN_COMMENT =
 const REPORT =
   'id, reason, status, created_at, post:posts(id, title, slug), comment:comments(id, content, author_name, status, post:posts(title, slug))'
 
+/** An uploaded avatar wins over the sign-in provider's picture. */
+function avatarOf(row: Pick<ProfileRow, 'avatar_url' | 'avatar_path'>) {
+  return row.avatar_path ? postImageUrl(row.avatar_path) : row.avatar_url
+}
+
 function toAuthor(row: ProfileRow | null): Author | null {
-  return row ? { id: row.id, name: row.display_name, avatarUrl: row.avatar_url } : null
+  return row
+    ? { id: row.id, name: row.display_name, avatarUrl: avatarOf(row), bio: row.bio ?? null }
+    : null
 }
 
 function toSummary(row: PostRow): PostSummary {
@@ -318,11 +328,7 @@ export const publicApi = {
   async author(id: string): Promise<Author | null> {
     if (!UUID.test(id)) return null
     const row = unwrap(
-      await supabase
-        .from('profiles')
-        .select('id, display_name, avatar_url')
-        .eq('id', id)
-        .maybeSingle(),
+      await supabase.from('profiles').select(`${PROFILE}, bio`).eq('id', id).maybeSingle(),
     ) as ProfileRow | null
     return toAuthor(row)
   },
@@ -461,30 +467,39 @@ export const authApi = {
     const user = data.session?.user
     if (!user) return null
     const [profile, isAdmin, suspended] = await Promise.all([
-      supabase.from('profiles').select('display_name, avatar_url').eq('id', user.id).maybeSingle(),
+      supabase.from('profiles').select(`${PROFILE}, bio`).eq('id', user.id).maybeSingle(),
       supabase.rpc('get_my_admin_status'),
       supabase.rpc('get_my_suspension_status'),
     ])
-    const row = profile.data as Pick<ProfileRow, 'display_name' | 'avatar_url'> | null
+    const row = profile.data as ProfileRow | null
     return {
       id: user.id,
       email: user.email ?? '',
       name: row?.display_name ?? user.email ?? 'Thành viên',
-      avatarUrl: row?.avatar_url ?? null,
+      avatarUrl: row ? avatarOf(row) : null,
+      bio: row?.bio ?? null,
+      avatarPath: row?.avatar_path ?? null,
+      providerAvatarUrl: row?.avatar_url ?? null,
       isAdmin: isAdmin.data === true,
       suspended: suspended.data === true,
     }
   },
 
-  async updateProfile(userId: string, body: ProfileInput): Promise<void> {
+  /** `previousAvatarPath` is deleted from Storage once the profile no longer uses it. */
+  async updateProfile(
+    userId: string,
+    body: ProfileInput,
+    previousAvatarPath: string | null,
+  ): Promise<void> {
     const rows = unwrap(
       await supabase
         .from('profiles')
-        .update({ display_name: body.name, avatar_url: body.avatarUrl })
+        .update({ display_name: body.name, bio: body.bio, avatar_path: body.avatarPath })
         .eq('id', userId)
         .select('id'),
     ) as unknown[]
     if (rows.length === 0) throw new ApiError(403, 'Bạn không có quyền sửa hồ sơ này.')
+    if (previousAvatarPath !== body.avatarPath) await removeImage(previousAvatarPath)
   },
 }
 
@@ -679,6 +694,7 @@ export const adminApi = {
       id: string
       display_name: string
       avatar_url: string | null
+      avatar_path: string | null
       email: string | null
       created_at: string
       post_count: number
@@ -691,7 +707,7 @@ export const adminApi = {
       items: rows.map((row) => ({
         id: row.id,
         name: row.display_name,
-        avatarUrl: row.avatar_url,
+        avatarUrl: avatarOf(row),
         email: row.email ?? '',
         createdAt: row.created_at,
         postCount: Number(row.post_count),
@@ -719,8 +735,8 @@ export const adminApi = {
    * Compresses the image in the browser, then stores it as `<user_id>/<uuid>.<ext>`
    * in the public bucket (users may only write inside their own folder).
    */
-  async upload(file: File): Promise<{ path: string; url: string }> {
-    const [image, userId] = await Promise.all([prepareImage(file), currentUserId()])
+  async upload(file: File, shape: ImageShape = 'cover'): Promise<{ path: string; url: string }> {
+    const [image, userId] = await Promise.all([prepareImage(file, shape), currentUserId()])
     const path = `${userId}/${crypto.randomUUID()}.${image.extension}`
     const { error } = await supabase.storage.from(POST_IMAGES_BUCKET).upload(path, image.blob, {
       contentType: image.contentType,

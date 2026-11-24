@@ -97,6 +97,9 @@ export function UserMenu() {
             <Link role="menuitem" to="/write" className={item}>
               Viết bài mới
             </Link>
+            <Link role="menuitem" to="/dashboard/profile" className={item}>
+              Hồ sơ của tôi
+            </Link>
             <button
               role="menuitem"
               type="button"
