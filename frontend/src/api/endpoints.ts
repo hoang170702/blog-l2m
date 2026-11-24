@@ -441,7 +441,7 @@ export const authApi = {
   async signInWithProvider(provider: OAuthProvider): Promise<void> {
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
-      options: { redirectTo: `${window.location.origin}/auth/callback` },
+      options: { redirectTo: `${window.location.origin}${import.meta.env.BASE_URL}auth/callback` },
     })
     if (error) throw new ApiError(error.status ?? 400, error.message)
   },

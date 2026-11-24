@@ -106,8 +106,9 @@ Each environment (UAT, production) is its own Supabase project plus a static hos
 1. Create the Supabase project, link it and apply migrations: `npx supabase link --project-ref <ref>`, then `npx supabase db push` (never run `seed.sql` there).
 2. Auth: set the Site URL to the site origin, add `<site>/auth/callback` to the redirect URLs, and enable Google and GitHub with that environment's OAuth apps.
 3. Feed: `npx supabase secrets set SITE_URL=https://<domain>`, then `npx supabase functions deploy feed --no-verify-jwt`.
-4. Build the frontend with that project's `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (`npm run build` in `frontend/`) and publish `frontend/dist` to any static host; `404.html` and `public/_redirects` cover SPA routing.
-5. Grant the first admin (Usage guide, step 4).
+4. GitHub Pages (this repository): `.github/workflows/deploy-pages.yml` lints, tests and builds on every push to `main` and publishes `frontend/dist` under `https://<owner>.github.io/<repository>/` (`VITE_BASE_PATH`). Set the repository variables `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`, and choose **GitHub Actions** as the Pages source. Use `https://<owner>.github.io/<repository>/` as the Auth Site URL and `…/auth/callback` as the redirect URL, and the same origin plus path as `SITE_URL` for the feed. Deep links are served through `404.html`, so they load correctly in browsers but answer with HTTP 404, which search engines index poorly; a custom domain does not change that.
+5. Any other static host: build the frontend with that project's `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` (`npm run build` in `frontend/`) and publish `frontend/dist` to any static host; `404.html` and `public/_redirects` cover SPA routing.
+6. Grant the first admin (Usage guide, step 4).
 
 Apply migrations before publishing a frontend that needs them. Secrets (database password, service key, OAuth secrets) never go in the repository: only `*.example` files are committed.
 

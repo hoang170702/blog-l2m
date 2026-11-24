@@ -11,7 +11,10 @@ const queryClient = new QueryClient({
 })
 
 // A data router is required for the editor's unsaved-changes guard (useBlocker).
-const router = createBrowserRouter(routes)
+// BASE_URL is Vite's `base` ("/" locally, "/<repository>/" on GitHub Pages).
+const router = createBrowserRouter(routes, {
+  basename: import.meta.env.BASE_URL.replace(/\/$/, '') || '/',
+})
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

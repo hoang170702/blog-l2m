@@ -62,6 +62,8 @@ function staticHosting(supabaseUrl: string): Plugin {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd())
   return {
+    // GitHub Pages serves a project site under /<repository>/; VITE_BASE_PATH sets that prefix.
+    base: env.VITE_BASE_PATH || '/',
     plugins: [react(), tailwindcss(), staticHosting(env.VITE_SUPABASE_URL ?? '')],
   }
 })
