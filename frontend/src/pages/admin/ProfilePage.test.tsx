@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import type { User } from '../../api/types'
@@ -58,7 +58,21 @@ describe('ProfilePage', () => {
       screen.getByLabelText('Ảnh đại diện'),
       new File(['x'], 'me.png', { type: 'image/png' }),
     )
-    await waitFor(() => expect(api.upload).toHaveBeenCalledWith(expect.any(File), 'avatar'))
+    // The crop dialog opens first; jsdom loads no pixels, so give the image a size.
+    const dialog = await screen.findByRole('dialog', { name: 'Chọn vùng ảnh' })
+    const img = dialog.querySelector('img')!
+    Object.defineProperty(img, 'naturalWidth', { value: 1200 })
+    Object.defineProperty(img, 'naturalHeight', { value: 800 })
+    fireEvent.load(img)
+    await user.click(within(dialog).getByRole('button', { name: 'Dùng ảnh này' }))
+    await waitFor(() =>
+      expect(api.upload).toHaveBeenCalledWith(expect.any(File), 'avatar', {
+        sx: 200,
+        sy: 0,
+        sw: 800,
+        sh: 800,
+      }),
+    )
     await user.click(screen.getByRole('button', { name: 'Lưu hồ sơ' }))
 
     await waitFor(() =>

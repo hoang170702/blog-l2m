@@ -4,7 +4,7 @@
  */
 import type { PostgrestError } from '@supabase/supabase-js'
 import { foldVi } from '../lib/fold'
-import { prepareImage, type ImageShape } from '../lib/image'
+import { prepareImage, type CropRect, type ImageShape } from '../lib/image'
 import { POST_IMAGES_BUCKET, postImageUrl, supabase } from '../lib/supabase'
 import { ApiError, toApiError, unwrap } from './client'
 import type {
@@ -735,8 +735,12 @@ export const adminApi = {
    * Compresses the image in the browser, then stores it as `<user_id>/<uuid>.<ext>`
    * in the public bucket (users may only write inside their own folder).
    */
-  async upload(file: File, shape: ImageShape = 'cover'): Promise<{ path: string; url: string }> {
-    const [image, userId] = await Promise.all([prepareImage(file, shape), currentUserId()])
+  async upload(
+    file: File,
+    shape: ImageShape = 'cover',
+    crop?: CropRect,
+  ): Promise<{ path: string; url: string }> {
+    const [image, userId] = await Promise.all([prepareImage(file, shape, crop), currentUserId()])
     const path = `${userId}/${crypto.randomUUID()}.${image.extension}`
     const { error } = await supabase.storage.from(POST_IMAGES_BUCKET).upload(path, image.blob, {
       contentType: image.contentType,

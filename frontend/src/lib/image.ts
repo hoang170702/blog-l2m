@@ -7,8 +7,19 @@ const SHAPES = {
   avatar: { ratio: 1, maxWidth: 400 },
 } as const
 export type ImageShape = keyof typeof SHAPES
+
+/** Width / height of the frame an image of this shape is cut to. */
+export const shapeRatio = (shape: ImageShape) => SHAPES[shape].ratio
+
+/** Region of the source image to keep, in source pixels. */
+export interface CropRect {
+  sx: number
+  sy: number
+  sw: number
+  sh: number
+}
 const MAX_BYTES = 2 * 1024 * 1024
-const QUALITY = 0.85
+const QUALITY = 0.9
 const ALLOWED = ['image/jpeg', 'image/png', 'image/webp', 'image/gif']
 
 export interface PreparedImage {
@@ -40,13 +51,54 @@ export function centerCrop(sourceWidth: number, sourceHeight: number, shape: Ima
 export const coverCrop = (sourceWidth: number, sourceHeight: number) =>
   centerCrop(sourceWidth, sourceHeight, 'cover')
 
+/** Output size for a crop: the shape's maximum width, never larger than the cropped region. */
+export function outputSize(crop: CropRect, shape: ImageShape) {
+  const { ratio, maxWidth } = SHAPES[shape]
+  const width = Math.max(1, Math.min(maxWidth, Math.round(crop.sw)))
+  return { width, height: Math.max(1, Math.round(width / ratio)) }
+}
+
 /**
- * Center-crops to the shape (cover: 16:9 up to 1600x900; avatar: square up to 400x400) and
- * re-encodes as WebP (JPEG where WebP encoding is unsupported).
+ * Draws the crop at the target size. Large reductions are done in halving steps with
+ * high-quality smoothing: a single big step makes browsers sample coarsely, which blurs and
+ * roughens edges.
+ */
+function drawCrop(source: CanvasImageSource, crop: CropRect, width: number, height: number) {
+  let current: CanvasImageSource = source
+  let { sx, sy, sw, sh } = crop
+  while (sw / 2 >= width && sh / 2 >= height) {
+    const step = document.createElement('canvas')
+    step.width = Math.round(sw / 2)
+    step.height = Math.round(sh / 2)
+    const context = step.getContext('2d')
+    if (!context) break
+    context.imageSmoothingQuality = 'high'
+    context.drawImage(current, sx, sy, sw, sh, 0, 0, step.width, step.height)
+    current = step
+    sx = 0
+    sy = 0
+    sw = step.width
+    sh = step.height
+  }
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error('Trình duyệt không xử lý được ảnh.')
+  context.imageSmoothingQuality = 'high'
+  context.drawImage(current, sx, sy, sw, sh, 0, 0, width, height)
+  return canvas
+}
+
+/**
+ * Cuts the chosen region (centered when `crop` is omitted) in the shape's frame (cover: 16:9
+ * up to 1600x900; avatar: square up to 400x400) and re-encodes as WebP (JPEG where WebP
+ * encoding is unsupported).
  */
 export async function prepareImage(
   file: File,
   shape: ImageShape = 'cover',
+  crop?: CropRect,
 ): Promise<PreparedImage> {
   if (!ALLOWED.includes(file.type)) {
     throw new Error('Chỉ hỗ trợ ảnh JPEG, PNG, WebP hoặc GIF.')
@@ -59,13 +111,9 @@ export async function prepareImage(
   }
 
   const bitmap = await createImageBitmap(file)
-  const crop = centerCrop(bitmap.width, bitmap.height, shape)
-  const canvas = document.createElement('canvas')
-  canvas.width = crop.width
-  canvas.height = crop.height
-  const context = canvas.getContext('2d')
-  if (!context) throw new Error('Trình duyệt không xử lý được ảnh.')
-  context.drawImage(bitmap, crop.sx, crop.sy, crop.sw, crop.sh, 0, 0, crop.width, crop.height)
+  const region = crop ?? centerCrop(bitmap.width, bitmap.height, shape)
+  const { width, height } = outputSize(region, shape)
+  const canvas = drawCrop(bitmap, region, width, height)
   bitmap.close()
 
   // Browsers without a WebP encoder silently return PNG, so check the result type.

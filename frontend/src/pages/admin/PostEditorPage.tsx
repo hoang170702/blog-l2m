@@ -10,11 +10,13 @@ import {
 import { Link, useBeforeUnload, useBlocker, useNavigate, useParams } from 'react-router'
 import { adminApi, publicApi } from '../../api/endpoints'
 import type { AdminPost, PostInput, PostStatus } from '../../api/types'
+import { ImageCropper } from '../../components/ImageCropper'
 import { MarkdownToolbar } from '../../components/MarkdownToolbar'
 import { Markdown } from '../../components/Markdown'
 import { useAuth } from '../../auth/AuthContext'
 import { Empty, ErrorMessage, Spinner } from '../../components/Status'
 import { autosaveKey } from '../../lib/autosave'
+import type { CropRect } from '../../lib/image'
 import { formatDate } from '../../lib/format'
 import { isFuture, isLive } from '../../lib/schedule'
 import { applyAction, shortcuts } from '../../lib/markdownEdit'
@@ -141,6 +143,7 @@ function PostForm({
   const [uploads, setUploads] = useState(0)
   const [uploadError, setUploadError] = useState<unknown>(null)
   const [newTag, setNewTag] = useState('')
+  const [cropping, setCropping] = useState<File | null>(null)
   const contentRef = useRef<HTMLTextAreaElement>(null)
   const saved = useRef(false)
 
@@ -223,11 +226,11 @@ function PostForm({
     setPost((current) => ({ ...current, [key]: value }))
   }
 
-  async function upload(file: File) {
+  async function upload(file: File, crop?: CropRect) {
     setUploads((n) => n + 1)
     setUploadError(null)
     try {
-      return await adminApi.upload(file)
+      return await adminApi.upload(file, 'cover', crop)
     } catch (error) {
       setUploadError(error)
       return null
@@ -236,9 +239,15 @@ function PostForm({
     }
   }
 
-  async function setCover(file: File) {
-    const result = await upload(file)
+  async function saveCover(file: File, crop?: CropRect) {
+    const result = await upload(file, crop)
     if (result) update('coverImagePath', result.path)
+  }
+
+  // The user picks the part to keep first; GIFs are uploaded as they are (animation kept).
+  function setCover(file: File) {
+    if (file.type === 'image/gif') void saveCover(file)
+    else setCropping(file)
   }
 
   // A post's only image is its cover (D37): an image dropped or pasted on the content replaces it.
@@ -273,6 +282,17 @@ function PostForm({
 
   return (
     <form onSubmit={onSubmit} className="space-y-5">
+      {cropping && (
+        <ImageCropper
+          file={cropping}
+          shape="cover"
+          onCancel={() => setCropping(null)}
+          onConfirm={(crop) => {
+            setCropping(null)
+            void saveCover(cropping, crop)
+          }}
+        />
+      )}
       <div className="flex flex-wrap items-center gap-3">
         <h1 className="flex-1 text-3xl font-extrabold">{id ? 'Sửa bài viết' : 'Viết bài mới'}</h1>
         {dirty && !save.isPending && (

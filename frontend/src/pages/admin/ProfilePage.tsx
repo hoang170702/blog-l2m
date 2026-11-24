@@ -4,8 +4,10 @@ import { Link } from 'react-router'
 import { adminApi, authApi } from '../../api/endpoints'
 import type { User } from '../../api/types'
 import { useAuth } from '../../auth/AuthContext'
+import { ImageCropper } from '../../components/ImageCropper'
 import { Avatar } from '../../components/UserMenu'
 import { ErrorMessage } from '../../components/Status'
+import type { CropRect } from '../../lib/image'
 import { postImageUrl } from '../../lib/supabase'
 import { useDocumentTitle } from '../../lib/useDocumentTitle'
 
@@ -26,8 +28,10 @@ function ProfileForm({ user }: { user: User }) {
   const [bio, setBio] = useState(user.bio ?? '')
   const [avatarPath, setAvatarPath] = useState(user.avatarPath)
 
+  const [cropping, setCropping] = useState<File | null>(null)
   const upload = useMutation({
-    mutationFn: (file: File) => adminApi.upload(file, 'avatar'),
+    mutationFn: ({ file, crop }: { file: File; crop?: CropRect }) =>
+      adminApi.upload(file, 'avatar', crop),
     onSuccess: (result) => setAvatarPath(result.path),
   })
   const save = useMutation({
@@ -52,6 +56,17 @@ function ProfileForm({ user }: { user: User }) {
   return (
     <section className="max-w-xl">
       <h1 className="mb-6 text-3xl font-extrabold">Hồ sơ</h1>
+      {cropping && (
+        <ImageCropper
+          file={cropping}
+          shape="avatar"
+          onCancel={() => setCropping(null)}
+          onConfirm={(crop) => {
+            setCropping(null)
+            upload.mutate({ file: cropping, crop })
+          }}
+        />
+      )}
       <form onSubmit={onSubmit} className="card space-y-5 p-6">
         <div className="flex flex-wrap items-center gap-4">
           <Avatar user={{ name: name || user.name, avatarUrl }} size="h-20 w-20" />
@@ -66,7 +81,9 @@ function ProfileForm({ user }: { user: User }) {
                 disabled={upload.isPending}
                 onChange={(e) => {
                   const file = e.target.files?.[0]
-                  if (file) upload.mutate(file)
+                  // GIFs keep their animation, so they skip the crop step.
+                  if (file?.type === 'image/gif') upload.mutate({ file })
+                  else if (file) setCropping(file)
                   e.target.value = ''
                 }}
               />
