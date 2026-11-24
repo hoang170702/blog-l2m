@@ -1,6 +1,7 @@
 import { Link } from 'react-router'
 import type { PostSummary } from '../api/types'
 import { formatDate } from '../lib/format'
+import { Avatar } from './UserMenu'
 
 export function PostCard({ post }: { post: PostSummary }) {
   return (
@@ -34,12 +35,8 @@ export function PostCard({ post }: { post: PostSummary }) {
               {post.category.name}
             </Link>
           )}
-          <span>{formatDate(post.publishedAt)}</span>
-          {post.author && (
-            <Link to={`/u/${post.author.id}`} className="transition hover:text-primary">
-              · {post.author.name}
-            </Link>
-          )}
+          {post.author && <AuthorChip author={post.author} />}
+          <span>· {formatDate(post.publishedAt)}</span>
         </div>
         <h2 className="font-display text-xl leading-tight font-bold md:text-2xl">
           <Link to={`/posts/${post.slug}`} className="transition hover:text-primary">
@@ -50,6 +47,19 @@ export function PostCard({ post }: { post: PostSummary }) {
         <TagList tags={post.tags} />
       </div>
     </article>
+  )
+}
+
+/** Small round avatar and name linking to the author page, for post cards and lists. */
+export function AuthorChip({ author }: { author: NonNullable<PostSummary['author']> }) {
+  return (
+    <Link
+      to={`/u/${author.id}`}
+      className="inline-flex items-center gap-1.5 text-ink transition hover:text-primary"
+    >
+      <Avatar user={author} size="h-6 w-6" />
+      <span className="truncate">{author.name}</span>
+    </Link>
   )
 }
 

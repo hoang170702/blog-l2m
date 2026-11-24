@@ -6,7 +6,7 @@ import { adminApi, publicApi } from '../api/endpoints'
 import type { PostDetail } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { Markdown } from '../components/Markdown'
-import { TagList } from '../components/PostCard'
+import { AuthorChip, TagList } from '../components/PostCard'
 import { ReportButton } from '../components/ReportButton'
 import { Avatar } from '../components/UserMenu'
 import { ErrorMessage, Spinner } from '../components/Status'
@@ -257,10 +257,15 @@ function RelatedPosts({ post }: { post: PostDetail }) {
                   />
                 )}
               </div>
-              <p className="p-4 font-bold leading-snug transition group-hover:text-primary">
+              <p className="px-4 pt-4 leading-snug font-bold transition group-hover:text-primary">
                 {item.title}
               </p>
             </Link>
+            {item.author && (
+              <div className="px-4 pt-2 pb-4 text-xs font-semibold">
+                <AuthorChip author={item.author} />
+              </div>
+            )}
           </li>
         ))}
       </ul>

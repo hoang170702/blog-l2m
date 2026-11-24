@@ -56,7 +56,8 @@ describe('author page (D41)', () => {
       'href',
       '/posts/bai-cua-lan',
     )
-    expect(screen.getByRole('link', { name: '· Lan' })).toHaveAttribute('href', `/u/${lan.id}`)
+    // Each card shows the author's avatar and name, linking to the author page.
+    expect(screen.getByRole('link', { name: 'Lan' })).toHaveAttribute('href', `/u/${lan.id}`)
     expect(posts).toHaveBeenCalledWith(expect.objectContaining({ author: lan.id }))
   })
 
