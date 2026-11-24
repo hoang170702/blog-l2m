@@ -182,8 +182,21 @@ Deep links are served through `404.html`: they work in browsers but answer HTTP 
 
    (or `psql "$DIRECT_URL" -v "email=you@example.com" -f scripts/bootstrap-site-admin.sql`). Sign out and in again; the dashboard menu then shows **Quản trị**. Revoke with `scripts/revoke-site-admin.sql`.
 
+## Maintenance
+
+**Unused images.** A cover or avatar is uploaded as soon as it is cropped, before the post or profile is saved, so replacing it twice before saving or closing the editor leaves files nobody uses (replaced and removed covers and avatars of saved posts and profiles are deleted automatically). To remove them:
+
+```bash
+export SUPABASE_URL=https://<ref>.supabase.co
+read -rs SUPABASE_SERVICE_ROLE_KEY && export SUPABASE_SERVICE_ROLE_KEY   # paste the service role (or secret) key; not echoed
+npm run images:cleanup                   # dry run: lists what it would delete
+npm run images:cleanup -- --apply        # deletes them
+```
+
+Files that no post cover (drafts included) or profile avatar uses are deleted, but only when older than 24 hours (`--min-age-hours=<n>`), so an upload still being edited survives. The service role key bypasses every access rule: never commit it or pass it on the command line.
+
 ## Status
 
 - The app runs fully on Supabase; the NestJS backend was removed. The VPS/Docker files (`deploy/`, `docker-compose.yml`, `frontend/Dockerfile`, `frontend/nginx/`) and `docs/api.md`, `docs/deploy.md`, `docs/security.md` and `AGENTS.md` still describe that earlier stack and are due for removal or rewrite.
 - GitHub Pages deploys the frontend only; database migrations and the feed function are applied by hand (Deployment, step 1). `.gitlab-ci.yml` still includes the earlier GitLab fullstack pipeline template.
-- Not done yet: a scheduled clean-up of cover images uploaded but never saved. More ideas are in `docs/ideas.md`.
+- Unused images are cleaned up by hand (Maintenance); a scheduled job is not set up. More ideas are in `docs/ideas.md`.

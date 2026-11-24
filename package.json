@@ -7,7 +7,8 @@
     "db:stop": "supabase stop",
     "db:reset": "supabase db reset",
     "db:test": "supabase test db",
-    "db:test:embedded": "node scripts/test-db-embedded.mjs"
+    "db:test:embedded": "node scripts/test-db-embedded.mjs",
+    "images:cleanup": "node scripts/cleanup-unused-images.mjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "^0.5.17",
