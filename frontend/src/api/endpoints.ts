@@ -66,6 +66,8 @@ interface PostRow {
   post_tags: { tag: TermRow | null }[]
   author: ProfileRow | null
   stats: { view_count: number; like_count: number } | null
+  /** PostgREST embedded count, only selected for the author's own list. */
+  comments?: { count: number }[]
   author_id: string | null
   content: string
   status: 'draft' | 'published'
@@ -90,7 +92,7 @@ const AUTHOR = `author:profiles!posts_author_profile_fkey(${PROFILE})`
 const STATS = 'stats:post_stats(view_count, like_count)'
 const SUMMARY = `id, title, slug, excerpt, cover_image_path, published_at, author_id, category:categories(${TERM}), post_tags(tag:tags(${TERM})), ${AUTHOR}, ${STATS}`
 const DETAIL = `${SUMMARY}, content`
-const ADMIN_POST = `${DETAIL}, status, created_at, updated_at`
+const ADMIN_POST = `${DETAIL}, status, created_at, updated_at, comments(count)`
 // `post` is an inner join so authors can filter the moderation queue to their own posts.
 const ADMIN_COMMENT =
   'id, parent_id, author_name, content, status, created_at, post_id, post:posts!inner(title, slug, author_id)'
@@ -139,6 +141,7 @@ function toAdminPost(row: PostRow): AdminPost {
     status: row.status === 'published' ? 'PUBLISHED' : 'DRAFT',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    comments: Number(row.comments?.[0]?.count ?? 0),
   }
 }
 
@@ -641,9 +644,13 @@ export const adminApi = {
   async stats(user: User): Promise<DashboardStats> {
     const mine = () =>
       supabase.from('posts').select('id', { count: 'exact', head: true }).eq('author_id', user.id)
-    const [posts, drafts, sitePosts, members, openReports] = await Promise.all([
+    const [posts, drafts, totals, sitePosts, members, openReports] = await Promise.all([
       count(mine()),
       count(mine().eq('status', 'draft')),
+      supabase
+        .from('post_stats')
+        .select('view_count, like_count, post:posts!inner(author_id)')
+        .eq('post.author_id', user.id),
       user.isAdmin
         ? count(supabase.from('posts').select('id', { count: 'exact', head: true }))
         : Promise.resolve(0),
@@ -659,9 +666,12 @@ export const adminApi = {
           )
         : Promise.resolve(0),
     ])
+    const rows = unwrap(totals) as { view_count: number; like_count: number }[]
     return {
       posts,
       drafts,
+      views: rows.reduce((sum, row) => sum + Number(row.view_count), 0),
+      likes: rows.reduce((sum, row) => sum + Number(row.like_count), 0),
       site: user.isAdmin ? { posts: sitePosts, members, openReports } : null,
     }
   },

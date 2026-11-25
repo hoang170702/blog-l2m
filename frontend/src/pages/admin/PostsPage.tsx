@@ -126,7 +126,8 @@ export function PostsPage() {
                     {post.status === 'PUBLISHED' && (
                       <>
                         {' '}
-                        · {post.views} lượt xem · {post.likes} lượt thích
+                        · {post.views} lượt xem · {post.likes} lượt thích · {post.comments} bình
+                        luận
                       </>
                     )}
                   </p>
