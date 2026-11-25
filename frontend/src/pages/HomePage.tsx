@@ -8,19 +8,25 @@ import { FollowButton } from '../components/FollowButton'
 import { Empty, ErrorMessage, Spinner } from '../components/Status'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 
-type Mode = 'all' | 'category' | 'tag' | 'search' | 'author' | 'following'
+type Mode = 'all' | 'category' | 'tag' | 'search' | 'author' | 'following' | 'series'
 
 export function HomePage({ mode = 'all' }: { mode?: Mode }) {
   const { slug, id } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
   const page = Number(searchParams.get('page') ?? '1') || 1
   const q = mode === 'search' ? (searchParams.get('q') ?? '') : undefined
+  const series = useQuery({
+    queryKey: ['series', slug],
+    queryFn: () => publicApi.series(slug!),
+    enabled: mode === 'series' && Boolean(slug),
+  })
   const filters = {
     page,
     category: mode === 'category' ? slug : undefined,
     tag: mode === 'tag' ? slug : undefined,
     author: mode === 'author' ? id : undefined,
     following: mode === 'following' || undefined,
+    series: mode === 'series' ? series.data?.id : undefined,
     q,
   }
   const author = useQuery({
@@ -33,6 +39,8 @@ export function HomePage({ mode = 'all' }: { mode?: Mode }) {
     queryKey: ['posts', filters],
     queryFn: () => publicApi.posts(filters),
     placeholderData: keepPreviousData,
+    // The series page needs the series id first.
+    enabled: mode !== 'series' || Boolean(series.data),
   })
 
   const headings: Record<Mode, string | undefined> = {
@@ -42,6 +50,7 @@ export function HomePage({ mode = 'all' }: { mode?: Mode }) {
     search: `Kết quả cho “${q}”`,
     author: author.data ? `Bài viết của ${author.data.name}` : author.isPending ? '…' : 'Tác giả',
     following: 'Đang theo dõi',
+    series: series.data ? `Series: ${series.data.title}` : series.isPending ? '…' : 'Series',
   }
   const heading = headings[mode]
   useDocumentTitle(heading)
@@ -71,12 +80,24 @@ export function HomePage({ mode = 'all' }: { mode?: Mode }) {
         </div>
       ) : mode === 'author' && author.isSuccess ? (
         <h1 className="mb-8 text-3xl font-extrabold md:text-4xl">Không tìm thấy tác giả</h1>
+      ) : mode === 'series' && series.isSuccess && !series.data ? (
+        <h1 className="mb-8 text-3xl font-extrabold md:text-4xl">Không tìm thấy series</h1>
+      ) : mode === 'series' && series.data ? (
+        <div className="mb-8">
+          <p className="text-sm font-semibold text-muted">Series</p>
+          <h1 className="text-3xl font-extrabold md:text-4xl">{series.data.title}</h1>
+          {series.data.description && (
+            <p className="mt-2 max-w-2xl whitespace-pre-line text-muted">
+              {series.data.description}
+            </p>
+          )}
+        </div>
       ) : heading ? (
         <h1 className="mb-8 text-3xl font-extrabold md:text-4xl">{heading}</h1>
       ) : (
         page === 1 && <Hero />
       )}
-      {isPending ? (
+      {mode === 'series' && series.isSuccess && !series.data ? null : isPending ? (
         <Spinner />
       ) : error ? (
         <ErrorMessage error={error} />

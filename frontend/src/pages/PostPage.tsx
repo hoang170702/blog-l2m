@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router'
 import { ApiError } from '../api/client'
 import { adminApi, publicApi } from '../api/endpoints'
-import type { PostDetail } from '../api/types'
+import type { PostDetail, PostSeries } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { Markdown } from '../components/Markdown'
 import { AuthorChip, TagList } from '../components/PostCard'
@@ -130,7 +130,9 @@ export function PostPage() {
           className="mb-10 aspect-video w-full rounded-3xl object-cover shadow-glow"
         />
       )}
+      {post.series && <SeriesNav series={post.series} current={post.slug} />}
       <PostBody post={post} />
+      {post.series && <SeriesNav series={post.series} current={post.slug} compact />}
       <div className="mt-4 flex flex-wrap items-center gap-4">
         <LikeButton post={post} />
         <BookmarkButton post={post} />
@@ -291,6 +293,52 @@ function BookmarkButton({ post }: { post: PostDetail }) {
       </button>
       {toggle.isError && <span className="text-sm text-red-600">{toggle.error.message}</span>}
     </span>
+  )
+}
+
+/** "Thuộc series X · Phần 2/5" with previous/next links (D47). */
+function SeriesNav({
+  series,
+  current,
+  compact = false,
+}: {
+  series: PostSeries
+  current: string
+  compact?: boolean
+}) {
+  const index = series.parts.findIndex((part) => part.slug === current)
+  const prev = index > 0 ? series.parts[index - 1] : null
+  const next = index >= 0 && index < series.parts.length - 1 ? series.parts[index + 1] : null
+  return (
+    <nav
+      aria-label={`Series ${series.title}`}
+      className={`card flex flex-wrap items-center gap-x-4 gap-y-2 px-5 py-3 text-sm ${compact ? 'mt-6' : 'mb-6'}`}
+    >
+      <span className="text-muted">
+        Thuộc series{' '}
+        <Link to={`/series/${series.slug}`} className="font-bold text-ink hover:text-primary">
+          {series.title}
+        </Link>
+        {index >= 0 && (
+          <>
+            {' '}
+            · Phần {index + 1}/{series.parts.length}
+          </>
+        )}
+      </span>
+      <span className="ml-auto flex gap-3 font-semibold">
+        {prev && (
+          <Link to={`/posts/${prev.slug}`} className="text-primary hover:underline">
+            ← {compact ? prev.title : 'Phần trước'}
+          </Link>
+        )}
+        {next && (
+          <Link to={`/posts/${next.slug}`} className="text-primary hover:underline">
+            {compact ? next.title : 'Phần sau'} →
+          </Link>
+        )}
+      </span>
+    </nav>
   )
 }
 

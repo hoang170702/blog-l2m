@@ -68,6 +68,7 @@ export const routes: RouteObject[] = [
       { path: 'search', element: <HomePage mode="search" /> },
       { path: 'u/:id', element: <HomePage mode="author" /> },
       { path: 'following', element: <HomePage mode="following" /> },
+      { path: 'series/:slug', element: <HomePage mode="series" /> },
       { path: 'posts/:slug', element: page(<PostPage />) },
       { path: '*', element: <NotFoundPage /> },
     ],

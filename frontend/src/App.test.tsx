@@ -65,6 +65,7 @@ const post: PostDetail = {
   ...summary,
   content: '## Mở đầu\n\nXin chào\n\n## Kết luận\n\nHết',
   hiddenAt: null,
+  series: null,
 }
 const comment: Comment = {
   id: 'c1',
@@ -194,6 +195,43 @@ describe('App', () => {
     await user.click(within(form).getByRole('button', { name: 'Gửi bình luận' }))
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Địa chỉ của bạn đã bị chặn bình luận.',
+    )
+  })
+
+  it('shows the series position with previous and next parts', async () => {
+    api.currentUser.mockResolvedValue(null)
+    api.post.mockResolvedValue({
+      ...post,
+      series: {
+        id: 's1',
+        title: 'Học Postgres',
+        slug: 'hoc-postgres',
+        description: null,
+        order: 2,
+        parts: [
+          { title: 'Cài đặt', slug: 'cai-dat', order: 1 },
+          { title: 'Hello world', slug: 'hello-world', order: 2 },
+          { title: 'Chỉ mục', slug: 'chi-muc', order: 3 },
+        ],
+      },
+    })
+    api.comments.mockResolvedValue([])
+    api.related.mockResolvedValue([])
+    api.recordView.mockResolvedValue(undefined)
+    renderWithProviders(<App />, { route: '/posts/hello-world' })
+    const nav = (await screen.findAllByRole('navigation', { name: 'Series Học Postgres' }))[0]
+    expect(nav).toHaveTextContent('Phần 2/3')
+    expect(within(nav).getByRole('link', { name: '← Phần trước' })).toHaveAttribute(
+      'href',
+      '/posts/cai-dat',
+    )
+    expect(within(nav).getByRole('link', { name: 'Phần sau →' })).toHaveAttribute(
+      'href',
+      '/posts/chi-muc',
+    )
+    expect(within(nav).getByRole('link', { name: 'Học Postgres' })).toHaveAttribute(
+      'href',
+      '/series/hoc-postgres',
     )
   })
 
