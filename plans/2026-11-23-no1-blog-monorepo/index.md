@@ -14,7 +14,7 @@ Machines: work alternates between two machines (A011). The bundle under `plans/`
 Workspace: machine A /home/hoangkktt/workspaces/blog-l2m; machine B /home/hoangnh17/workspaces/tool/blog-l2m
 Repository (machine A): /home/hoangkktt/workspaces/blog-l2m (remote origin https://gitlab.com/NguyenHuyHoang170702/blog-l2m.git); worktree /home/hoangkktt/workspaces/blog-l2m/.worktrees/blog-l2m-mvp, branch feature/blog-mvp at 4daba0e (R2 work goes to feature/supabase-pages); template repo /home/hoangkktt/workspaces/cicd-templates (main f97f02d, tags v1.0.0, v1.0.1)
 Repository (machine B): /home/hoangnh17/workspaces/tool/blog-l2m (remote origin https://gitea.com/hoang170702/blog-l2m.git); main checkout on feature/supabase-pages (aa0a1a6), no worktree (user override A013); no cicd-templates checkout
-Active action: A029 (R4 Task 1 dark mode); R4 = 9 feature branches merged into main in order: dark-mode, share-buttons, post-stats, bookmarks, hidden-posts, comment-profanity-filter, follows, series, notifications; then docs + push
+Active action: A035 (R4 follows); done: A029–A034 (dark-mode, share-buttons, post-stats, bookmarks, hidden-posts, comment-profanity-filter merged into main); R4 = 9 feature branches merged into main in order: dark-mode, share-buttons, post-stats, bookmarks, hidden-posts, comment-profanity-filter, follows, series, notifications; then docs + push
 
 <!-- workflow-active-snapshot:start version:2 -->
 ## Active Snapshot
