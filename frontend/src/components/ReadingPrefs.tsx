@@ -10,7 +10,7 @@ import {
   type ReadingPrefs as Prefs,
 } from '../lib/readingPrefs'
 
-/** "Tuỳ chỉnh đọc": text size stepper and font picker, remembered on the device. */
+/** "Cỡ chữ & font": text size stepper and font picker, remembered on the device. */
 export function ReadingPrefs() {
   const [prefs, setCurrent] = useState<Prefs>(() => getPrefs())
   const sizeIndex = SIZES.findIndex((s) => s.id === prefs.size)
@@ -30,10 +30,10 @@ export function ReadingPrefs() {
   return (
     <div
       role="group"
-      aria-label="Tuỳ chỉnh đọc"
+      aria-label="Cỡ chữ & font"
       className="card flex flex-wrap items-center gap-2 px-4 py-3 text-sm"
     >
-      <span className="font-bold">Aa Tuỳ chỉnh đọc</span>
+      <span className="font-bold">Aa Cỡ chữ & font</span>
       <span className="ml-auto flex items-center gap-1">
         <button
           type="button"
