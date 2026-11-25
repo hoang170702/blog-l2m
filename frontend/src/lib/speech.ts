@@ -1,22 +1,53 @@
 /**
  * Read paragraphs aloud with the browser's Web Speech API (D1): the voice the reader picked
- * from the device's own voices, else the device's Vietnamese voice, else its default voice. One utterance per chunk; long paragraphs are split
- * at sentence ends because some browsers cut utterances after ~15 seconds.
+ * from the device's own voices, else the device's Vietnamese voice, else its default voice.
+ * Paragraphs are split into chunks at sentence ends (the unit for seeking and progress), and
+ * consecutive chunks are spoken together as one utterance (see GROUP), in every browser.
  */
 
 export type ReaderState = 'idle' | 'playing' | 'paused' | 'done'
 
 export interface Reader {
-  play(): void
+  /** Starts from chunk `from` (default the beginning), e.g. to continue after a rate change. */
+  play(from?: number): void
   pause(): void
   resume(): void
   stop(): void
   readonly state: ReaderState
+  /** Index of the chunk being read. */
+  readonly position: number
+  /** The text split for seeking and progress (several are spoken per utterance); `position` indexes it. */
+  readonly chunks: readonly string[]
   readonly hasVietnameseVoice: boolean
   onChange(listener: (state: ReaderState) => void): () => void
+  /** Called with `position` each time a chunk starts. */
+  onProgress(listener: (position: number) => void): () => void
 }
 
 const MAX_CHUNK = 800
+// Starting an utterance costs seconds with online voices (Edge "… Online", 4-5 s measured), so
+// consecutive chunks are spoken together, up to this many characters per utterance, and the
+// next utterance is queued while the current one plays.
+const GROUP = 800
+// Chrome's "Google …" voices stop an utterance after about 15 seconds.
+const GROUP_GOOGLE = 200
+const LOOKAHEAD = 2
+
+/** Chunks `from`..`to - 1` spoken as one utterance, at most `limit` characters (always one chunk). */
+export function group(chunks: readonly string[], from: number, limit: number): number {
+  let to = from + 1
+  let length = chunks[from]?.length ?? 0
+  while (to < chunks.length && length + 1 + chunks[to].length <= limit) {
+    length += 1 + chunks[to].length
+    to += 1
+  }
+  return to
+}
+
+/** Ends every chunk with punctuation so a heading is not run into the next sentence. */
+function sentence(text: string): string {
+  return /[.!?…:;]$/.test(text) ? text : `${text}.`
+}
 
 export function supported(): boolean {
   return (
@@ -96,6 +127,7 @@ export function createReader(
   const synth = window.speechSynthesis
   const chunks = paragraphs.flatMap((paragraph) => chunk(paragraph))
   const listeners = new Set<(state: ReaderState) => void>()
+  const progressListeners = new Set<(position: number) => void>()
   let state: ReaderState = 'idle'
   let index = 0
   let voices = synth.getVoices()
@@ -111,23 +143,60 @@ export function createReader(
     listeners.forEach((listener) => listener(next))
   }
 
-  function speakNext() {
-    if (index >= chunks.length) {
-      set('done')
-      return
+  // Bumped by play() and stop(): events of utterances from an earlier run are ignored (Safari
+  // fires onend for utterances removed by cancel()).
+  let run = 0
+  let queued = 0 // first chunk not yet handed to the browser
+  let ahead = 0 // utterances handed over and not finished
+
+  function moveTo(next: number) {
+    if (next === index) return
+    index = next
+    progressListeners.forEach((listener) => listener(index))
+  }
+
+  function fill(current: number) {
+    const limit = (voice?.name ?? '').startsWith('Google') ? GROUP_GOOGLE : GROUP
+    while (queued < chunks.length && ahead < LOOKAHEAD) {
+      const to = group(chunks, queued, limit)
+      speak(queued, to, current)
+      queued = to
+      ahead += 1
     }
-    const utterance = new SpeechSynthesisUtterance(chunks[index])
+  }
+
+  function speak(from: number, to: number, current: number) {
+    const parts = chunks.slice(from, to).map(sentence)
+    // Character offset where each chunk starts, to follow word boundaries back to a chunk.
+    const starts: number[] = []
+    let offset = 0
+    for (const part of parts) {
+      starts.push(offset)
+      offset += part.length + 1
+    }
+    const utterance = new SpeechSynthesisUtterance(parts.join(' '))
     utterance.lang = voice?.lang ?? 'vi-VN'
     if (voice) utterance.voice = voice
     utterance.rate = options.rate ?? 1
+    utterance.onboundary = (event) => {
+      if (current !== run) return
+      let k = starts.length - 1
+      while (k > 0 && starts[k] > event.charIndex) k -= 1
+      moveTo(from + k)
+    }
     utterance.onend = () => {
-      if (state !== 'playing') return
-      index += 1
-      speakNext()
+      if (current !== run) return
+      ahead -= 1
+      if (to >= chunks.length) {
+        set('done')
+        return
+      }
+      moveTo(to)
+      fill(current)
     }
     utterance.onerror = (event) => {
       // "interrupted"/"canceled" follow our own stop(); anything else ends the reading.
-      if (event.error === 'interrupted' || event.error === 'canceled') return
+      if (current !== run || event.error === 'interrupted' || event.error === 'canceled') return
       set('done')
     }
     synth.speak(utterance)
@@ -137,14 +206,24 @@ export function createReader(
     get state() {
       return state
     },
+    get position() {
+      return index
+    },
+    chunks,
     get hasVietnameseVoice() {
       return voices.some(isVietnamese)
     },
-    play() {
+    play(from = 0) {
       synth.cancel()
-      index = 0
+      // Chrome stays paused across cancel(), so a reading paused before would never start.
+      if (synth.paused) synth.resume()
+      index = from >= 0 && from < chunks.length ? from : 0
+      queued = index
+      ahead = 0
+      run += 1
       set('playing')
-      speakNext()
+      progressListeners.forEach((listener) => listener(index))
+      fill(run)
     },
     pause() {
       if (state !== 'playing') return
@@ -157,12 +236,17 @@ export function createReader(
       synth.resume()
     },
     stop() {
+      run += 1
       set('idle')
       synth.cancel()
     },
     onChange(listener) {
       listeners.add(listener)
       return () => listeners.delete(listener)
+    },
+    onProgress(listener) {
+      progressListeners.add(listener)
+      return () => progressListeners.delete(listener)
     },
   }
 }
