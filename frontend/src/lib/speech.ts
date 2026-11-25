@@ -1,6 +1,6 @@
 /**
- * Read paragraphs aloud with the browser's Web Speech API (D1): the device's Vietnamese voice
- * when it has one, else its default voice. One utterance per chunk; long paragraphs are split
+ * Read paragraphs aloud with the browser's Web Speech API (D1): the voice the reader picked
+ * from the device's own voices, else the device's Vietnamese voice, else its default voice. One utterance per chunk; long paragraphs are split
  * at sentence ends because some browsers cut utterances after ~15 seconds.
  */
 
@@ -26,9 +26,53 @@ export function supported(): boolean {
   )
 }
 
-/** First voice whose language starts with "vi", or null for the browser default. */
-export function pickVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
-  return voices.find((voice) => voice.lang.toLowerCase().startsWith('vi')) ?? null
+function isVietnamese(voice: SpeechSynthesisVoice): boolean {
+  return voice.lang.toLowerCase().startsWith('vi')
+}
+
+/**
+ * The voice the reader chose (by `voiceURI`) when the device still has it, else the first
+ * Vietnamese voice, else null for the browser default.
+ */
+export function pickVoice(
+  voices: SpeechSynthesisVoice[],
+  preferred?: string | null,
+): SpeechSynthesisVoice | null {
+  const chosen = preferred ? voices.find((voice) => voice.voiceURI === preferred) : undefined
+  return chosen ?? voices.find(isVietnamese) ?? null
+}
+
+/** Every device voice for the picker: Vietnamese first, then by language and name. */
+export function sortVoices(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice[] {
+  return [...voices].sort(
+    (a, b) =>
+      Number(isVietnamese(b)) - Number(isVietnamese(a)) ||
+      a.lang.localeCompare(b.lang) ||
+      a.name.localeCompare(b.name),
+  )
+}
+
+const VOICE_KEY = 'read-aloud-voice'
+
+/** The voice picked on this device, or null for automatic. */
+export function getSavedVoice(storage: Pick<Storage, 'getItem'> = localStorage): string | null {
+  try {
+    return storage.getItem(VOICE_KEY) || null
+  } catch {
+    return null
+  }
+}
+
+export function saveVoice(
+  voiceURI: string | null,
+  storage: Pick<Storage, 'setItem' | 'removeItem'> = localStorage,
+) {
+  try {
+    if (voiceURI) storage.setItem(VOICE_KEY, voiceURI)
+    else storage.removeItem(VOICE_KEY)
+  } catch {
+    // Private mode or full storage: the choice simply is not remembered.
+  }
 }
 
 export function chunk(paragraph: string, max = MAX_CHUNK): string[] {
@@ -45,16 +89,21 @@ export function chunk(paragraph: string, max = MAX_CHUNK): string[] {
   return pieces
 }
 
-export function createReader(paragraphs: string[], options: { rate?: number } = {}): Reader {
+export function createReader(
+  paragraphs: string[],
+  options: { rate?: number; voiceURI?: string | null } = {},
+): Reader {
   const synth = window.speechSynthesis
   const chunks = paragraphs.flatMap((paragraph) => chunk(paragraph))
   const listeners = new Set<(state: ReaderState) => void>()
   let state: ReaderState = 'idle'
   let index = 0
-  let voice = pickVoice(synth.getVoices())
+  let voices = synth.getVoices()
+  let voice = pickVoice(voices, options.voiceURI)
   // Voices load asynchronously in Chrome; refresh the choice when they arrive.
   synth.addEventListener?.('voiceschanged', () => {
-    voice = pickVoice(synth.getVoices())
+    voices = synth.getVoices()
+    voice = pickVoice(voices, options.voiceURI)
   })
 
   function set(next: ReaderState) {
@@ -89,7 +138,7 @@ export function createReader(paragraphs: string[], options: { rate?: number } = 
       return state
     },
     get hasVietnameseVoice() {
-      return voice !== null
+      return voices.some(isVietnamese)
     },
     play() {
       synth.cancel()

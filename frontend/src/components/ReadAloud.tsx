@@ -1,6 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { markdownToParagraphs } from '../lib/markdownText'
-import { createReader, supported, type Reader, type ReaderState } from '../lib/speech'
+import {
+  createReader,
+  getSavedVoice,
+  saveVoice,
+  sortVoices,
+  supported,
+  type Reader,
+  type ReaderState,
+} from '../lib/speech'
 
 const RATES = [0.8, 1, 1.25, 1.5]
 
@@ -8,13 +16,26 @@ const RATES = [0.8, 1, 1.25, 1.5]
 export function ReadAloud({ title, markdown }: { title: string; markdown: string }) {
   const paragraphs = useMemo(() => [title, ...markdownToParagraphs(markdown)], [title, markdown])
   const [rate, setRate] = useState(1)
+  const [voiceURI, setVoiceURI] = useState(() => getSavedVoice())
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>(() =>
+    supported() ? sortVoices(window.speechSynthesis.getVoices()) : [],
+  )
   const [state, setState] = useState<ReaderState>('idle')
   const [reader, setReader] = useState<Reader | null>(null)
 
-  // A new reader per post and rate; leaving the page or changing the post stops the speech.
+  // Chrome fills the voice list asynchronously.
   useEffect(() => {
     if (!supported()) return
-    const instance = createReader(paragraphs, { rate })
+    const synth = window.speechSynthesis
+    const update = () => setVoices(sortVoices(synth.getVoices()))
+    synth.addEventListener?.('voiceschanged', update)
+    return () => synth.removeEventListener?.('voiceschanged', update)
+  }, [])
+
+  // A new reader per post, rate and voice; leaving the page or changing the post stops the speech.
+  useEffect(() => {
+    if (!supported()) return
+    const instance = createReader(paragraphs, { rate, voiceURI })
     const off = instance.onChange(setState)
     // Deferred so the effect itself does not set state synchronously.
     const timer = setTimeout(() => setReader(instance), 0)
@@ -23,7 +44,7 @@ export function ReadAloud({ title, markdown }: { title: string; markdown: string
       off()
       instance.stop()
     }
-  }, [paragraphs, rate])
+  }, [paragraphs, rate, voiceURI])
 
   if (!supported()) return null
   const current = reader
@@ -71,7 +92,28 @@ export function ReadAloud({ title, markdown }: { title: string; markdown: string
           ))}
         </select>
       </label>
-      {!hasVoice && (
+      {voices.length > 0 && (
+        <label className="flex w-full items-center gap-1 text-muted">
+          Giọng
+          <select
+            value={voices.some((voice) => voice.voiceURI === voiceURI) ? (voiceURI ?? '') : ''}
+            onChange={(e) => {
+              const next = e.target.value || null
+              saveVoice(next)
+              setVoiceURI(next)
+            }}
+            className="input min-w-0 flex-1 py-1 text-sm"
+          >
+            <option value="">Tự động (tiếng Việt nếu có)</option>
+            {voices.map((voice) => (
+              <option key={voice.voiceURI} value={voice.voiceURI}>
+                {voice.name} ({voice.lang})
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {!hasVoice && !voiceURI && (
         <p className="w-full text-xs text-muted">
           Thiết bị không có giọng tiếng Việt, dùng giọng mặc định.
         </p>
