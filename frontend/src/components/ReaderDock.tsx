@@ -52,7 +52,7 @@ export function ReaderDock({ title, markdown }: { title: string; markdown: strin
     <div ref={ref} className="fixed top-1/2 right-2 z-30 -translate-y-1/2 sm:right-4">
       <div className="card flex flex-col gap-1 rounded-full p-1.5">
         {supported() && item('listen', 'Nghe bài viết', '🎧')}
-        {item('prefs', 'Tuỳ chỉnh đọc', 'Aa')}
+        {item('prefs', 'Cỡ chữ & font', 'Aa')}
       </div>
       <div className="absolute top-1/2 right-full mr-2 w-[min(20rem,calc(100vw-5rem))] -translate-y-1/2">
         <div hidden={open !== 'listen'}>

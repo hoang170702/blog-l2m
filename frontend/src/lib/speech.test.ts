@@ -1,8 +1,22 @@
-import { chunk, createReader, pickVoice, supported } from './speech'
+import {
+  chunk,
+  createReader,
+  getSavedVoice,
+  pickVoice,
+  saveVoice,
+  sortVoices,
+  supported,
+} from './speech'
 
-type Utterance = { text: string; rate: number; lang: string; onend: (() => void) | null }
+type Utterance = {
+  text: string
+  rate: number
+  lang: string
+  voice: unknown
+  onend: (() => void) | null
+}
 
-function fakeSynth(voices: { lang: string }[] = []) {
+function fakeSynth(voices: Partial<SpeechSynthesisVoice>[] = []) {
   const spoken: Utterance[] = []
   const synth = {
     speak: vi.fn((utterance: Utterance) => spoken.push(utterance)),
@@ -42,6 +56,40 @@ describe('speech', () => {
     const vi1 = { lang: 'vi-VN' } as SpeechSynthesisVoice
     expect(pickVoice([{ lang: 'en-US' } as SpeechSynthesisVoice, vi1])).toBe(vi1)
     expect(pickVoice([{ lang: 'en-US' } as SpeechSynthesisVoice])).toBeNull()
+  })
+
+  it('uses the picked voice while the device has it, else falls back to Vietnamese', () => {
+    const viVoice = { lang: 'vi-VN', voiceURI: 'vi' } as SpeechSynthesisVoice
+    const enVoice = { lang: 'en-US', voiceURI: 'en' } as SpeechSynthesisVoice
+    expect(pickVoice([viVoice, enVoice], 'en')).toBe(enVoice)
+    expect(pickVoice([viVoice, enVoice], 'gone')).toBe(viVoice)
+  })
+
+  it('lists Vietnamese voices first, then by language and name', () => {
+    const voices = [
+      { lang: 'fr-FR', name: 'Amélie' },
+      { lang: 'en-US', name: 'Zoe' },
+      { lang: 'vi-VN', name: 'Linh' },
+      { lang: 'en-US', name: 'Alex' },
+    ] as SpeechSynthesisVoice[]
+    expect(sortVoices(voices).map((voice) => voice.name)).toEqual(['Linh', 'Alex', 'Zoe', 'Amélie'])
+  })
+
+  it('remembers the picked voice and forgets it on automatic', () => {
+    saveVoice('en')
+    expect(getSavedVoice()).toBe('en')
+    saveVoice(null)
+    expect(getSavedVoice()).toBeNull()
+  })
+
+  it('speaks with the picked voice and still reports a missing Vietnamese voice', () => {
+    const enVoice = { lang: 'en-US', voiceURI: 'en' }
+    const { spoken } = fakeSynth([enVoice])
+    const reader = createReader(['Hello'], { voiceURI: 'en' })
+    reader.play()
+    expect(spoken[0]?.voice).toBe(enVoice)
+    expect(spoken[0]?.lang).toBe('en-US')
+    expect(reader.hasVietnameseVoice).toBe(false)
   })
 
   it('splits long paragraphs at sentence ends', () => {

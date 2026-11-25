@@ -277,6 +277,46 @@ describe('App', () => {
     vi.unstubAllGlobals()
   })
 
+  it('lists the device voices and reads with the one the reader picks', async () => {
+    const spoken: { text: string; voice?: unknown }[] = []
+    const english = { lang: 'en-US', name: 'Alex', voiceURI: 'en' }
+    vi.stubGlobal('speechSynthesis', {
+      speak: (u: { text: string }) => spoken.push(u),
+      cancel: vi.fn(),
+      pause: vi.fn(),
+      resume: vi.fn(),
+      getVoices: () => [english, { lang: 'vi-VN', name: 'Linh', voiceURI: 'vi' }],
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })
+    vi.stubGlobal(
+      'SpeechSynthesisUtterance',
+      class {
+        text: string
+        voice: unknown = null
+        constructor(text: string) {
+          this.text = text
+        }
+      },
+    )
+    openPost()
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'Nghe bài viết' }))
+    const group = screen.getByRole('group', { name: 'Nghe bài viết' })
+    const picker = within(group).getByRole('combobox', { name: 'Giọng' })
+    expect(
+      within(picker)
+        .getAllByRole('option')
+        .map((o) => o.textContent),
+    ).toEqual(['Tự động (tiếng Việt nếu có)', 'Linh (vi-VN)', 'Alex (en-US)'])
+    await user.selectOptions(picker, 'en')
+    await user.click(within(group).getByRole('button', { name: '▶ Nghe' }))
+    expect(spoken[0]?.voice).toBe(english)
+    expect(localStorage.getItem('read-aloud-voice')).toBe('en')
+    localStorage.removeItem('read-aloud-voice')
+    vi.unstubAllGlobals()
+  })
+
   it('hides the read-aloud control when the browser has no speech synthesis', async () => {
     openPost()
     expect(await screen.findByRole('heading', { name: 'Hello world' })).toBeInTheDocument()
