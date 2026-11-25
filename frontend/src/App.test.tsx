@@ -235,6 +235,40 @@ describe('App', () => {
     )
   })
 
+  it('reads the post aloud with the device voice when the browser supports it', async () => {
+    const spoken: { text: string }[] = []
+    vi.stubGlobal('speechSynthesis', {
+      speak: (u: { text: string }) => spoken.push(u),
+      cancel: vi.fn(),
+      pause: vi.fn(),
+      resume: vi.fn(),
+      getVoices: () => [{ lang: 'vi-VN' }],
+      addEventListener: vi.fn(),
+    })
+    vi.stubGlobal(
+      'SpeechSynthesisUtterance',
+      class {
+        text: string
+        constructor(text: string) {
+          this.text = text
+        }
+      },
+    )
+    openPost()
+    const group = await screen.findByRole('group', { name: 'Nghe bài viết' })
+    await userEvent.setup().click(within(group).getByRole('button', { name: '▶ Nghe' }))
+    expect(spoken[0]?.text).toBe('Hello world')
+    expect(within(group).getByRole('button', { name: '❚❚ Tạm dừng' })).toBeInTheDocument()
+    expect(screen.queryByText(/không có giọng tiếng Việt/)).toBeNull()
+    vi.unstubAllGlobals()
+  })
+
+  it('hides the read-aloud control when the browser has no speech synthesis', async () => {
+    openPost()
+    expect(await screen.findByRole('heading', { name: 'Hello world' })).toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: 'Nghe bài viết' })).toBeNull()
+  })
+
   it('offers delete to an admin but not to other members', async () => {
     openPost(member())
     // The like button only appears once the signed-in member has loaded.
