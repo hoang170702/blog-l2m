@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { markdownToParagraphs } from '../lib/markdownText'
 import { createReader, supported, type Reader, type ReaderState } from '../lib/speech'
 
@@ -9,25 +9,26 @@ export function ReadAloud({ title, markdown }: { title: string; markdown: string
   const paragraphs = useMemo(() => [title, ...markdownToParagraphs(markdown)], [title, markdown])
   const [rate, setRate] = useState(1)
   const [state, setState] = useState<ReaderState>('idle')
-  const [hasVoice, setHasVoice] = useState(true)
-  const reader = useRef<Reader | null>(null)
+  const [reader, setReader] = useState<Reader | null>(null)
 
   // A new reader per post and rate; leaving the page or changing the post stops the speech.
   useEffect(() => {
     if (!supported()) return
     const instance = createReader(paragraphs, { rate })
-    reader.current = instance
-    setHasVoice(instance.hasVietnameseVoice)
     const off = instance.onChange(setState)
+    // Deferred so the effect itself does not set state synchronously.
+    const timer = setTimeout(() => setReader(instance), 0)
     return () => {
+      clearTimeout(timer)
       off()
       instance.stop()
-      reader.current = null
     }
   }, [paragraphs, rate])
 
   if (!supported()) return null
-  const current = reader.current
+  const current = reader
+  // Before the effect ran there is no reader yet; assume a voice rather than flash the note.
+  const hasVoice = current?.hasVietnameseVoice ?? true
   const button =
     'inline-flex items-center gap-1 rounded-full border border-line bg-surface px-3 py-1.5 text-sm font-semibold transition hover:border-primary hover:text-primary disabled:opacity-50'
 
