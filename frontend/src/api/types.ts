@@ -38,6 +38,8 @@ export interface AdminPost extends PostDetail {
   status: PostStatus
   createdAt: string
   updatedAt: string
+  /** Comments on the post, all statuses (D48). */
+  comments: number
 }
 
 export interface Page<T> {
@@ -84,6 +86,9 @@ export type OAuthProvider = 'google' | 'github'
 export interface DashboardStats {
   posts: number
   drafts: number
+  /** Totals over the user's posts (D48). */
+  views: number
+  likes: number
   /** Site-wide totals, only for admins. */
   site: { posts: number; members: number; openReports: number } | null
 }
