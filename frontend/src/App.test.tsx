@@ -14,6 +14,8 @@ const api = vi.hoisted(() => ({
   related: vi.fn(),
   recordView: vi.fn(),
   liked: vi.fn(),
+  bookmarked: vi.fn(),
+  setBookmarked: vi.fn(),
   deletePost: vi.fn(),
 }))
 
@@ -26,6 +28,8 @@ vi.mock('./api/endpoints', () => ({
     related: api.related,
     recordView: api.recordView,
     liked: api.liked,
+    bookmarked: api.bookmarked,
+    setBookmarked: api.setBookmarked,
   },
   adminApi: { deletePost: api.deletePost },
   authApi: { currentUser: api.currentUser },
@@ -85,6 +89,7 @@ function openPost(user: User | null = null) {
   api.related.mockResolvedValue([])
   api.recordView.mockResolvedValue(undefined)
   api.liked.mockResolvedValue(false)
+  api.bookmarked.mockResolvedValue(false)
   renderWithProviders(<App />, { route: '/posts/hello-world' })
 }
 
@@ -164,6 +169,24 @@ describe('App', () => {
     openPost(member({ isAdmin: true }))
     await userEvent.setup().click(await screen.findByRole('button', { name: 'Xoá bài' }))
     await waitFor(() => expect(api.deletePost).toHaveBeenCalledWith('p1'))
+  })
+
+  it('sends signed-out readers to login from the bookmark button', async () => {
+    openPost()
+    expect(await screen.findByRole('link', { name: '🔖 Lưu' })).toHaveAttribute('href', '/login')
+  })
+
+  it('lets a member bookmark the post', async () => {
+    api.setBookmarked.mockResolvedValue(undefined)
+    openPost(member())
+    const button = await screen.findByRole('button', { name: '🔖 Lưu' })
+    expect(button).toHaveAttribute('aria-pressed', 'false')
+    await userEvent.setup().click(button)
+    await waitFor(() => expect(api.setBookmarked).toHaveBeenCalledWith('p1', true))
+    expect(await screen.findByRole('button', { name: '🔖 Đã lưu' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
   })
 
   it('shows the 404 page for an unknown post', async () => {

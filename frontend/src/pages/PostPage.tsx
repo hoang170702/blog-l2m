@@ -124,6 +124,7 @@ export function PostPage() {
       <PostBody post={post} />
       <div className="mt-4 flex flex-wrap items-center gap-4">
         <LikeButton post={post} />
+        <BookmarkButton post={post} />
         <ShareButtons title={post.title} />
         <span className="ml-auto">
           <ReportButton target={{ postId: post.id }} label="Báo cáo bài viết" />
@@ -230,6 +231,54 @@ function LikeButton({ post }: { post: PostDetail }) {
         className={`${className} ${on ? 'border-primary bg-primary-soft text-primary-dark' : ''}`}
       >
         {on ? '♥' : '♡'} {post.likes} lượt thích
+      </button>
+      {toggle.isError && <span className="text-sm text-red-600">{toggle.error.message}</span>}
+    </span>
+  )
+}
+
+function BookmarkButton({ post }: { post: PostDetail }) {
+  const { user } = useAuth()
+  const queryClient = useQueryClient()
+  const key = ['bookmarked', post.id, user?.id]
+  const saved = useQuery({
+    queryKey: key,
+    queryFn: () => publicApi.bookmarked(post.id),
+    enabled: Boolean(user),
+  })
+  const toggle = useMutation({
+    mutationFn: (next: boolean) => publicApi.setBookmarked(post.id, next),
+    onSuccess: (_, next) => {
+      queryClient.setQueryData(key, next)
+      return queryClient.invalidateQueries({ queryKey: ['bookmarks'] })
+    },
+  })
+  const className =
+    'inline-flex items-center gap-2 rounded-full border border-line bg-surface px-4 py-2 text-sm font-semibold transition hover:border-primary hover:text-primary'
+
+  if (!user) {
+    return (
+      <Link
+        to="/login"
+        state={{ from: `/posts/${post.slug}` }}
+        className={className}
+        title="Đăng nhập để lưu bài viết"
+      >
+        🔖 Lưu
+      </Link>
+    )
+  }
+  const on = saved.data === true
+  return (
+    <span className="inline-flex items-center gap-3">
+      <button
+        type="button"
+        aria-pressed={on}
+        disabled={saved.isPending || toggle.isPending}
+        onClick={() => toggle.mutate(!on)}
+        className={`${className} ${on ? 'border-primary bg-primary-soft text-primary-dark' : ''}`}
+      >
+        🔖 {on ? 'Đã lưu' : 'Lưu'}
       </button>
       {toggle.isError && <span className="text-sm text-red-600">{toggle.error.message}</span>}
     </span>

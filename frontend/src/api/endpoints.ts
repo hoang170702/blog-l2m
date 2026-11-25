@@ -399,6 +399,33 @@ export const publicApi = {
     else unwrap(await supabase.from('post_likes').delete().eq('post_id', postId))
   },
 
+  // Bookmarks (D42): RLS limits every query to the caller's own rows.
+  async bookmarked(postId: string): Promise<boolean> {
+    const rows = unwrap(
+      await supabase.from('bookmarks').select('post_id').eq('post_id', postId),
+    ) as unknown[]
+    return rows.length > 0
+  },
+
+  async setBookmarked(postId: string, on: boolean): Promise<void> {
+    if (on) unwrap(await supabase.from('bookmarks').insert({ post_id: postId }))
+    else unwrap(await supabase.from('bookmarks').delete().eq('post_id', postId))
+  },
+
+  /** The caller's saved posts, newest bookmark first; posts no longer live are skipped. */
+  async bookmarks(page = 1): Promise<Page<PostSummary>> {
+    const result = await supabase
+      .from('bookmarks')
+      .select(`created_at, post:posts(${SUMMARY})`, { count: 'exact' })
+      .order('created_at', { ascending: false })
+      .range(...range(page))
+    const pageOf = toPage(result, page, (row: { post: PostRow | null }) => row.post)
+    return {
+      ...pageOf,
+      items: pageOf.items.filter((row): row is PostRow => row !== null).map(toSummary),
+    }
+  },
+
   async report(target: ReportTarget, reason: string): Promise<void> {
     unwrap(
       await supabase.rpc('report_content', {
