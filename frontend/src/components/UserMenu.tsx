@@ -87,7 +87,7 @@ export function UserMenu() {
         {unread.data ? (
           <span
             data-testid="unread-dot"
-            className="absolute -top-0.5 -right-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-bold text-white ring-2 ring-canvas"
+            className="absolute -top-0.5 -right-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-bold text-on-primary ring-2 ring-canvas"
           >
             {unread.data > 9 ? '9+' : unread.data}
           </span>
@@ -126,7 +126,7 @@ export function UserMenu() {
             <button
               role="menuitem"
               type="button"
-              className={`${item} text-red-600`}
+              className={`${item} text-danger`}
               onClick={async () => {
                 await logout()
                 navigate('/')

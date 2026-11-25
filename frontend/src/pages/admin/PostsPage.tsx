@@ -62,7 +62,9 @@ export function PostsPage() {
                 type="button"
                 onClick={() => setParam('all', value)}
                 className={`rounded-full px-3 py-1 transition ${
-                  (value === '1') === all ? 'bg-primary text-white' : 'text-muted hover:text-ink'
+                  (value === '1') === all
+                    ? 'bg-primary text-on-primary'
+                    : 'text-muted hover:text-ink'
                 }`}
               >
                 {label}
@@ -88,7 +90,7 @@ export function PostsPage() {
       {posts.isPending ? (
         <Spinner />
       ) : posts.error ? (
-        <ErrorMessage error={posts.error} />
+        <ErrorMessage error={posts.error} onRetry={() => void posts.refetch()} />
       ) : posts.data.items.length === 0 ? (
         <Empty>
           Chưa có bài viết.{' '}
@@ -135,7 +137,7 @@ export function PostsPage() {
                   </p>
                 </div>
                 {post.hiddenAt ? (
-                  <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                  <span className="rounded-full bg-warning-soft px-3 py-1 text-xs font-bold text-warning">
                     Đã ẩn
                   </span>
                 ) : (
@@ -157,14 +159,14 @@ export function PostsPage() {
                   )}
                   {user?.isAdmin && post.status === 'PUBLISHED' && (
                     <button
-                      className="text-amber-700 hover:underline"
+                      className="text-warning hover:underline"
                       onClick={() => setHidden.mutate({ id: post.id, hidden: !post.hiddenAt })}
                     >
                       {post.hiddenAt ? 'Hiện lại' : 'Ẩn'}
                     </button>
                   )}
                   <button
-                    className="text-red-600 hover:underline"
+                    className="text-danger hover:underline"
                     onClick={() => {
                       if (confirm(`Xoá bài “${post.title}”?`)) remove.mutate(post.id)
                     }}

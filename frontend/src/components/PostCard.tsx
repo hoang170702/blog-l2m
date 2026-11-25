@@ -5,10 +5,10 @@ import { Avatar } from './UserMenu'
 
 export function PostCard({ post }: { post: PostSummary }) {
   return (
-    <article className="card group flex flex-col overflow-hidden transition duration-300 hover:-translate-y-1 hover:shadow-glow md:flex-row">
+    <article className="card group flex flex-col overflow-hidden transition duration-300 hover:border-primary/40 hover:shadow-glow">
       <Link
         to={`/posts/${post.slug}`}
-        className="block aspect-video w-full shrink-0 overflow-hidden bg-gradient-to-br from-primary-soft to-secondary-soft md:w-80 md:self-center"
+        className="block aspect-video w-full shrink-0 overflow-hidden bg-gradient-to-br from-primary-soft to-secondary-soft"
         tabIndex={-1}
         aria-hidden="true"
       >
@@ -17,7 +17,7 @@ export function PostCard({ post }: { post: PostSummary }) {
             src={post.coverImageUrl}
             alt=""
             loading="lazy"
-            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+            className="h-full w-full object-cover"
           />
         ) : (
           <span className="grid h-full w-full place-items-center font-display text-5xl font-extrabold text-primary/30">
@@ -25,8 +25,8 @@ export function PostCard({ post }: { post: PostSummary }) {
           </span>
         )}
       </Link>
-      <div className="flex min-w-0 flex-1 flex-col justify-center gap-3 p-6">
-        <div className="flex flex-wrap items-center gap-2 text-xs font-semibold text-muted">
+      <div className="flex min-w-0 flex-1 flex-col gap-3 p-6">
+        <div className="meta flex flex-wrap items-center gap-x-2 gap-y-1 text-xs font-semibold text-muted">
           {post.category && (
             <Link
               to={`/category/${post.category.slug}`}
@@ -36,9 +36,9 @@ export function PostCard({ post }: { post: PostSummary }) {
             </Link>
           )}
           {post.author && <AuthorChip author={post.author} />}
-          <span>· {formatDate(post.publishedAt)}</span>
+          <span>{formatDate(post.publishedAt)}</span>
         </div>
-        <h2 className="font-display text-xl leading-tight font-bold md:text-2xl">
+        <h2 className="font-display text-xl leading-tight font-bold text-pretty">
           <Link to={`/posts/${post.slug}`} className="transition hover:text-primary">
             {post.title}
           </Link>

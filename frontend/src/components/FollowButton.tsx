@@ -44,7 +44,7 @@ export function FollowButton({ authorId }: { authorId: string }) {
       >
         {on ? '✓ Đang theo dõi' : '+ Theo dõi'}
       </button>
-      {toggle.isError && <span className="text-sm text-red-600">{toggle.error.message}</span>}
+      {toggle.isError && <span className="text-sm text-danger">{toggle.error.message}</span>}
     </span>
   )
 }

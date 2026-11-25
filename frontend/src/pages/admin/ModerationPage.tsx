@@ -29,7 +29,7 @@ export function ModerationPage() {
             role="tab"
             aria-selected={tab === value}
             onClick={() => setTab(value)}
-            className={`flex-1 rounded-full px-4 py-2 transition ${tab === value ? 'bg-primary text-white' : 'text-muted hover:text-ink'}`}
+            className={`flex-1 rounded-full px-4 py-2 transition ${tab === value ? 'bg-primary text-on-primary' : 'text-muted hover:text-ink'}`}
           >
             {label}
           </button>
@@ -83,7 +83,7 @@ function BannedWords() {
       {words.isPending ? (
         <Spinner />
       ) : words.error ? (
-        <ErrorMessage error={words.error} />
+        <ErrorMessage error={words.error} onRetry={() => void words.refetch()} />
       ) : words.data.length === 0 ? (
         <Empty>Danh sách trống.</Empty>
       ) : (
@@ -95,7 +95,7 @@ function BannedWords() {
                 type="button"
                 aria-label={`Xoá từ ${item}`}
                 onClick={() => remove.mutate(item)}
-                className="text-muted hover:text-red-600"
+                className="text-muted hover:text-danger"
               >
                 ×
               </button>
@@ -124,7 +124,7 @@ function BlockedClients() {
       {clients.isPending ? (
         <Spinner />
       ) : clients.error ? (
-        <ErrorMessage error={clients.error} />
+        <ErrorMessage error={clients.error} onRetry={() => void clients.refetch()} />
       ) : clients.data.length === 0 ? (
         <Empty>Chưa chặn địa chỉ nào.</Empty>
       ) : (

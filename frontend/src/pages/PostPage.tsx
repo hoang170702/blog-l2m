@@ -27,6 +27,7 @@ export function PostPage() {
     data: post,
     error,
     isPending,
+    refetch,
   } = useQuery({
     queryKey: ['post', slug],
     queryFn: () => publicApi.post(slug),
@@ -49,7 +50,7 @@ export function PostPage() {
 
   if (isPending) return <Spinner />
   if (error instanceof ApiError && error.status === 404) return <NotFoundPage />
-  if (error) return <ErrorMessage error={error} />
+  if (error) return <ErrorMessage error={error} onRetry={() => void refetch()} />
 
   const isAuthor = Boolean(user) && post.author?.id === user?.id
   // The author and admins may delete a post (D38); only the author edits it.
@@ -63,14 +64,14 @@ export function PostPage() {
       {post.hiddenAt && (
         <p
           role="status"
-          className="mt-6 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200"
+          className="mt-6 rounded-2xl border border-warning/40 bg-warning-soft px-4 py-3 text-sm font-semibold text-warning"
         >
           Bài này đã bị ẩn bởi quản trị viên từ {formatDate(post.hiddenAt)}. Chỉ bạn và quản trị
           viên còn xem được.
         </p>
       )}
       <header className="mt-6 mb-8">
-        <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-muted">
+        <div className="meta flex flex-wrap items-center gap-x-2 gap-y-1 text-sm font-semibold text-muted">
           {post.category && (
             <Link
               to={`/category/${post.category.slug}`}
@@ -80,8 +81,8 @@ export function PostPage() {
             </Link>
           )}
           <span>{formatDate(post.publishedAt)}</span>
-          <span>· {readingMinutes(post.content)} phút đọc</span>
-          <span>· {post.views} lượt xem</span>
+          <span>{readingMinutes(post.content)} phút đọc</span>
+          <span>{post.views} lượt xem</span>
           {canDelete && (
             <span className="ml-auto flex gap-3">
               {isAuthor && (
@@ -97,7 +98,7 @@ export function PostPage() {
                     if (confirm(`Xoá bài “${post.title}”? Không thể hoàn tác.`))
                       remove.mutate(post.id)
                   }}
-                  className="text-red-600 hover:underline"
+                  className="text-danger hover:underline"
                 >
                   Xoá bài
                 </button>
@@ -245,7 +246,7 @@ function LikeButton({ post }: { post: PostDetail }) {
       >
         {on ? '♥' : '♡'} {post.likes} lượt thích
       </button>
-      {toggle.isError && <span className="text-sm text-red-600">{toggle.error.message}</span>}
+      {toggle.isError && <span className="text-sm text-danger">{toggle.error.message}</span>}
     </span>
   )
 }
@@ -293,7 +294,7 @@ function BookmarkButton({ post }: { post: PostDetail }) {
       >
         🔖 {on ? 'Đã lưu' : 'Lưu'}
       </button>
-      {toggle.isError && <span className="text-sm text-red-600">{toggle.error.message}</span>}
+      {toggle.isError && <span className="text-sm text-danger">{toggle.error.message}</span>}
     </span>
   )
 }

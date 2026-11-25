@@ -91,7 +91,7 @@ function ProfileForm({ user }: { user: User }) {
             {avatarPath && (
               <button
                 type="button"
-                className="block font-semibold text-muted hover:text-red-600"
+                className="block font-semibold text-muted hover:text-danger"
                 onClick={() => setAvatarPath(null)}
               >
                 {user.providerAvatarUrl ? 'Dùng ảnh từ Google/GitHub' : 'Bỏ ảnh đại diện'}
@@ -136,7 +136,7 @@ function ProfileForm({ user }: { user: User }) {
         </p>
         {save.isError && <ErrorMessage error={save.error} />}
         {save.isSuccess && !dirty && (
-          <p role="status" className="text-sm font-semibold text-green-700">
+          <p role="status" className="text-sm font-semibold text-success">
             Đã lưu hồ sơ.
           </p>
         )}

@@ -80,7 +80,7 @@ export function ReportsPage() {
       {reports.isPending ? (
         <Spinner />
       ) : reports.error ? (
-        <ErrorMessage error={reports.error} />
+        <ErrorMessage error={reports.error} onRetry={() => void reports.refetch()} />
       ) : reports.data.items.length === 0 ? (
         <Empty>Không có báo cáo.</Empty>
       ) : (
@@ -121,7 +121,7 @@ export function ReportsPage() {
                 <div className="flex flex-wrap gap-3 pt-1 text-sm font-semibold">
                   {report.comment && report.comment.status !== 'REJECTED' && (
                     <button
-                      className="text-amber-700 hover:underline"
+                      className="text-warning hover:underline"
                       onClick={() => act.mutate({ report, action: 'hide' })}
                     >
                       Ẩn bình luận
@@ -129,14 +129,14 @@ export function ReportsPage() {
                   )}
                   {report.post && (
                     <button
-                      className="text-amber-700 hover:underline"
+                      className="text-warning hover:underline"
                       onClick={() => act.mutate({ report, action: 'hide' })}
                     >
                       Ẩn bài viết
                     </button>
                   )}
                   <button
-                    className="text-red-600 hover:underline"
+                    className="text-danger hover:underline"
                     onClick={() =>
                       confirm(report.comment ? 'Xoá bình luận này?' : 'Xoá bài viết này?') &&
                       act.mutate({ report, action: 'delete' })
@@ -147,7 +147,7 @@ export function ReportsPage() {
                   {report.status === 'OPEN' ? (
                     <>
                       <button
-                        className="text-green-700 hover:underline"
+                        className="text-success hover:underline"
                         onClick={() => setReportStatus.mutate({ id: report.id, next: 'RESOLVED' })}
                       >
                         Đã xử lý

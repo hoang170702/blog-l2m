@@ -79,7 +79,7 @@ export function AdminLayout() {
           {user?.suspended && (
             <p
               role="alert"
-              className="mb-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700"
+              className="mb-6 rounded-2xl border border-danger/30 bg-danger-soft px-5 py-4 text-sm text-danger"
             >
               Tài khoản của bạn đang bị khoá: bạn vẫn đọc được nhưng không thể viết, sửa bài, tải
               ảnh hay thích bài. Liên hệ quản trị viên nếu đây là nhầm lẫn.

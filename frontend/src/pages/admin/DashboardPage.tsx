@@ -62,7 +62,7 @@ export function DashboardPage() {
         </Link>
       </div>
 
-      {stats.error && <ErrorMessage error={stats.error} />}
+      {stats.error && <ErrorMessage error={stats.error} onRetry={() => void stats.refetch()} />}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Bài viết của bạn" value={stats.data?.posts} to="/dashboard/posts" />
         <StatCard
@@ -120,7 +120,7 @@ export function DashboardPage() {
         {recent.isPending ? (
           <Spinner />
         ) : recent.error ? (
-          <ErrorMessage error={recent.error} />
+          <ErrorMessage error={recent.error} onRetry={() => void recent.refetch()} />
         ) : recent.data.items.length === 0 ? (
           <Empty>
             Bạn chưa có bài viết nào.{' '}
@@ -175,7 +175,7 @@ export function StatusBadge({
     )
   }
   return published ? (
-    <span className="rounded-full bg-green-50 px-2.5 py-1 text-xs font-bold text-green-700">
+    <span className="rounded-full bg-success-soft px-2.5 py-1 text-xs font-bold text-success">
       Đã đăng
     </span>
   ) : (

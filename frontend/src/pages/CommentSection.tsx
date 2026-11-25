@@ -88,7 +88,7 @@ function CommentBody({ comment }: { comment: Comment }) {
         </p>
         <p className="mt-1 whitespace-pre-line">{comment.content}</p>
         {comment.masked && (
-          <p className="mt-2 rounded-xl bg-amber-50 px-3 py-1.5 text-xs font-semibold text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+          <p className="mt-2 rounded-xl bg-warning-soft px-3 py-1.5 text-xs font-semibold text-warning">
             ⚠ Hệ thống đã che từ ngữ không phù hợp trong bình luận này.
             {comment.clientHint && <> · IP {comment.clientHint}</>}
           </p>

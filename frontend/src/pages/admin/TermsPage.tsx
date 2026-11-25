@@ -58,7 +58,7 @@ export function TermsPage({ kind }: { kind: TermKind }) {
       {terms.isPending ? (
         <Spinner />
       ) : terms.error ? (
-        <ErrorMessage error={terms.error} />
+        <ErrorMessage error={terms.error} onRetry={() => void terms.refetch()} />
       ) : terms.data.length === 0 ? (
         <Empty>Chưa có mục nào.</Empty>
       ) : (
@@ -78,7 +78,7 @@ export function TermsPage({ kind }: { kind: TermKind }) {
                 Đổi tên
               </button>
               <button
-                className="text-sm text-red-600 hover:underline"
+                className="text-sm text-danger hover:underline"
                 onClick={() => confirm(`Xoá “${term.name}”?`) && remove.mutate(term.id)}
               >
                 Xoá
