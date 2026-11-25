@@ -4,10 +4,11 @@ import { publicApi } from '../api/endpoints'
 import { Pagination } from '../components/Pagination'
 import { PostCard } from '../components/PostCard'
 import { Avatar } from '../components/UserMenu'
+import { FollowButton } from '../components/FollowButton'
 import { Empty, ErrorMessage, Spinner } from '../components/Status'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 
-type Mode = 'all' | 'category' | 'tag' | 'search' | 'author'
+type Mode = 'all' | 'category' | 'tag' | 'search' | 'author' | 'following'
 
 export function HomePage({ mode = 'all' }: { mode?: Mode }) {
   const { slug, id } = useParams()
@@ -19,6 +20,7 @@ export function HomePage({ mode = 'all' }: { mode?: Mode }) {
     category: mode === 'category' ? slug : undefined,
     tag: mode === 'tag' ? slug : undefined,
     author: mode === 'author' ? id : undefined,
+    following: mode === 'following' || undefined,
     q,
   }
   const author = useQuery({
@@ -39,6 +41,7 @@ export function HomePage({ mode = 'all' }: { mode?: Mode }) {
     tag: `Thẻ: #${slug}`,
     search: `Kết quả cho “${q}”`,
     author: author.data ? `Bài viết của ${author.data.name}` : author.isPending ? '…' : 'Tác giả',
+    following: 'Đang theo dõi',
   }
   const heading = headings[mode]
   useDocumentTitle(heading)
@@ -53,15 +56,18 @@ export function HomePage({ mode = 'all' }: { mode?: Mode }) {
   return (
     <section>
       {mode === 'author' && author.data ? (
-        <div className="mb-8 flex items-center gap-4">
+        <div className="mb-8 flex flex-wrap items-center gap-4">
           <Avatar user={author.data} size="h-16 w-16" />
-          <div>
-            <p className="text-sm font-semibold text-muted">Tác giả</p>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-muted">
+              Tác giả · {author.data.followers ?? 0} người theo dõi
+            </p>
             <h1 className="text-3xl font-extrabold md:text-4xl">{author.data.name}</h1>
             {author.data.bio && (
               <p className="mt-2 max-w-2xl whitespace-pre-line text-muted">{author.data.bio}</p>
             )}
           </div>
+          <FollowButton authorId={author.data.id} />
         </div>
       ) : mode === 'author' && author.isSuccess ? (
         <h1 className="mb-8 text-3xl font-extrabold md:text-4xl">Không tìm thấy tác giả</h1>
@@ -75,7 +81,11 @@ export function HomePage({ mode = 'all' }: { mode?: Mode }) {
       ) : error ? (
         <ErrorMessage error={error} />
       ) : data.items.length === 0 ? (
-        <Empty>Chưa có bài viết nào.</Empty>
+        <Empty>
+          {mode === 'following'
+            ? 'Bạn chưa theo dõi ai, hoặc những người bạn theo dõi chưa đăng bài. Mở trang một tác giả và bấm “+ Theo dõi”.'
+            : 'Chưa có bài viết nào.'}
+        </Empty>
       ) : (
         <>
           {/* One column, newest first; every post gets the same card. */}
