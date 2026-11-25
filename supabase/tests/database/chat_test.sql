@@ -1,7 +1,7 @@
 -- Member chat (PLAN-20261125-chat): shared room, private threads, blocks, limits.
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(24);
+select plan(25);
 
 insert into auth.users (id, email) values
   ('11111111-1111-4111-8111-111111111111', 'admin@test.local'),
@@ -94,6 +94,10 @@ select pg_temp.as_user('44444444-4444-4444-8444-444444444444');
 reset role;
 insert into public.messages (user_id, content) values ('33333333-3333-4333-8333-333333333333', 'new');
 select is((select count(*) from public.messages where content = 'old'), 0::bigint, 'room messages older than 90 days are purged');
+
+-- The client embeds the author through this key (author:profiles!messages_user_id_fkey)
+select fk_ok('public', 'messages', ARRAY['user_id'], 'public', 'profiles', ARRAY['id'],
+  'message authors reference profiles so the API can embed them');
 
 select * from finish();
 rollback;
