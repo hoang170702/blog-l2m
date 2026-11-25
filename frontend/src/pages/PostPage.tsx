@@ -8,6 +8,7 @@ import { useAuth } from '../auth/AuthContext'
 import { Markdown } from '../components/Markdown'
 import { AuthorChip, TagList } from '../components/PostCard'
 import { ReadAloud } from '../components/ReadAloud'
+import { ReadingPrefs } from '../components/ReadingPrefs'
 import { ReportButton } from '../components/ReportButton'
 import { ShareButtons } from '../components/ShareButtons'
 import { Avatar } from '../components/UserMenu'
@@ -125,7 +126,10 @@ export function PostPage() {
           </div>
         )}
       </header>
-      <ReadAloud title={post.title} markdown={post.content} />
+      <div className="mt-6 grid gap-4 md:grid-cols-2">
+        <ReadAloud title={post.title} markdown={post.content} />
+        <ReadingPrefs />
+      </div>
       {post.coverImageUrl && (
         <img
           src={post.coverImageUrl}
@@ -193,7 +197,7 @@ function PostBody({ post }: { post: PostDetail }) {
           </ol>
         </nav>
       )}
-      <div ref={contentRef}>
+      <div ref={contentRef} className="reader">
         <Markdown>{post.content}</Markdown>
       </div>
       <div className="mt-8 border-t border-line pt-6">

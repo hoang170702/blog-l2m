@@ -36,7 +36,7 @@ export function ReadAloud({ title, markdown }: { title: string; markdown: string
     <div
       role="group"
       aria-label="Nghe bài viết"
-      className="card mt-6 flex flex-wrap items-center gap-2 px-4 py-3 text-sm"
+      className="card flex flex-wrap items-center gap-2 px-4 py-3 text-sm"
     >
       <span className="font-bold">🔊 Nghe bài viết</span>
       {state === 'playing' ? (
