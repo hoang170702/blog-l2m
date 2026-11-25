@@ -233,6 +233,21 @@ Everything below is on `main` (0b61d5e) and on Gitea; nothing is deployed yet (s
 
 Open for machine A: `npx supabase db push --remote`, GitHub remote + push `main`, browser smoke of all of the above, `kiro-simplify` over `6f99253..main` (never run).
 
+## Day summary 2026-11-25 evening (machine A)
+
+Released: production migrations `20261125100000`–`20261125180000` applied, GitHub Pages serves `main` (8f4562d). Remotes on machine A: `gitea` (where work lands), `github` (Pages), `origin` (gitlab.com, old). Local `main` was reset to `gitea/main` because Gitea's history was rewritten (old tip kept as `backup/main-before-gitea-sync`).
+
+| What | Where | Commits |
+| --- | --- | --- |
+| Chat never loaded: `messages.user_id` referenced `auth.users`, the client embeds `profiles!messages_user_id_fkey` | migration `20261125180000`, `chat_test.sql` `fk_ok` | 8a29316 |
+| Reader controls moved into a floating rail (`ReaderDock`) | — | 03ec8dc |
+| Reading panel renamed "Cỡ chữ & font"; read-aloud voice picker | `lib/speech.ts` | ebd1134, d710887 |
+| Safari crash: CSP lacked `wss://`; refused socket no longer crashes pages | `vite.config.ts`, `lib/chat.ts` | f643aeb, 7b80df7 |
+| Read-aloud: continue after rate/voice change, paragraph slider, utterance grouping (Edge online voices: 4-5 s per utterance, measured by the user) | `lib/speech.ts`, `ReadAloud.tsx` | c512244 |
+| Responsive pass (Playwright at 390/820/1440 px) | see `docs/ideas.md` | f25b838 |
+
+Still open: browser smoke on a real iPhone/Safari of chat and read-aloud; `private.comment_clients` capture on Supabase cloud; old NestJS files (Housekeeping in `docs/ideas.md`); `actions/deploy-pages` on Node 20.
+
 ## Handoff Notes
 
 ### Machines
@@ -249,7 +264,7 @@ Open for machine A: `npx supabase db push --remote`, GitHub remote + push `main`
 Switching machines: push the branch, copy `plans/2026-11-23-no1-blog-monorepo/` to the other machine, pull, then resume. Branch state must reach both remotes when both are used.
 
 - 2026-11-25 (machine B) tooling notes for the next agent: skills come from `~/skill/agent-skills` and are synced with `KIRO_SKILLS_DEST="$HOME/.kiro/skills" ~/skill/agent-skills/scripts/sync-kiro-skill.sh [name]` (the script's default destination is the Kiro Crew directory, wrong for kiro-cli). The evondev `ui-ux` skill was copied into `~/skill/agent-skills/skills/ui-ux` (not committed there). Playwright for its probe lives in `/tmp/evon-probe` with a TLS-ignoring shim in `/tmp/evon-shim` (corporate proxy re-signs github.io); both are disposable. The production anon key is public and readable from the deployed bundle, so a local build of `main` against production is possible without any secret.
-- Release steps nobody has run yet (need machine A or the Supabase CLI login): `npx supabase db push --remote` for migrations `20261125*`, and a GitHub remote + `git push github main` so GitHub Pages rebuilds (its workflow listens to GitHub `main` only; origin is Gitea).
+- Release steps (done 2026-11-25 evening on machine A, A043): `npx supabase db push --remote` for migrations `20261125*`, and `git push github main` so GitHub Pages rebuilds (its workflow listens to GitHub `main` only; work lands on Gitea).
 
 - PR/MR target: repository `NguyenHuyHoang170702/blog-l2m`, source `feature/blog-mvp`, target `uat` (per the approved git flow; created as [MR !1](https://gitlab.com/NguyenHuyHoang170702/blog-l2m/-/merge_requests/1)). Not merged: merging into `uat` triggers the UAT deploy, which needs the user's server/Supabase variables.
 - Remaining user-owned CI/CD variables (scope `uat` and `production` unless noted): `DEPLOY_HOST`, `DEPLOY_USER`, `SSH_PRIVATE_KEY` (File), `SSH_KNOWN_HOSTS`, `DEPLOY_PATH`, `APP_DOMAIN`, `DATABASE_URL`, `DIRECT_URL`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`; edge proxy needs `ACME_EMAIL` on the server. Load with `deploy/scripts/set-gitlab-vars.sh <env>` from `deploy/vars/<env>.env`.
@@ -308,3 +323,5 @@ Switching machines: push the branch, copy `plans/2026-11-23-no1-blog-monorepo/` 
 - A041 (completed 2026-11-25 16:55 +07, machine B): reading preferences delivered under its own bundle `plans/2026-11-25-no2-reading-prefs/` (PLAN-20261125-reading-prefs, A001; commit f1225ba, merge ce2451e). `/security-audit` over `ee44829..main` (A040 + reading prefs, frontend only, no migration), local lenses: Unsafe Sinks (no `dangerouslySetInnerHTML`/`innerHTML`/URL sinks added; `data-font` and `--reader-size` are set only from allowlisted ids and a fixed px table, never from storage text), Abuse/Hardening (`ErrorMessage` with `onRetry` hides the technical message and logs it to the console; action errors unchanged; retry is user-triggered, no loop), Supply Chain (`@fontsource/be-vietnam-pro` 5.3.0, `@fontsource-variable/lora` 5.3.0 pinned with sha512 integrity, same publisher as the existing fontsource packages; `npm audit --audit-level=high` clean, the 2 moderate build-time findings unchanged), Platform (CSP unchanged: fonts served from `'self'`). Findings: none. Hardening noted: `markdownText` timing test (250 ms budget) may be flaky on a slow CI runner; not security. Pushed `main`, `fix/ui-review`, `feature/reading-prefs`.
 <!-- workflow-action:A042 status:completed -->
 - A042 (completed 2026-11-25 19:10 +07, machine B): member chat delivered under `plans/2026-11-25-no3-chat/` (PLAN-20261125-chat A001): migration `20261125170000_chat.sql`, `chat_test.sql`, `chatApi`, `lib/chat.ts`, `components/chat/*`, `/chat`; docs; security audit (one Low fixed: shared realtime topic). Merged `--no-ff` into `main`, pushed `main` + `feature/chat`.
+<!-- workflow-action:A043 status:completed -->
+- A043 (completed 2026-11-25 ~23:55 +07, machine A): synced `main` from Gitea, applied production migrations `20261125100000`–`20261125180000`, added the `github` remote and released `main` (8f4562d) to GitHub Pages; evening fixes and features listed in "Day summary 2026-11-25 evening (machine A)". Checks on every merge: lint, typecheck, vitest (100), build, `npm run db:test:embedded` (220).

@@ -29,7 +29,7 @@ A Vietnamese blog: Vite + React SPA on GitHub Pages, data in Supabase (Postgres 
 - Checks (CI runs the same): `frontend/`: `npm run lint && npm run typecheck && npm test && npm run build`; repository root: `npm run db:test:embedded` (pgTAP in PGlite, no Docker) or `npm run db:test` (needs `npx supabase start`).
 - Local stack: `npx supabase start && npx supabase db reset`, then `frontend/.env.local` from `.env.example` with the anon key of `npx supabase status`, `npm run dev`. Seed admin `admin@example.com` / `local-dev-admin-password`.
 - Branching: one `feature/*` or `fix/*` branch per change, merged `--no-ff` into `main`, full check set after the merge. `main` on gitea.com (`hoang170702/blog-l2m`) is where work lands; GitHub Pages builds only from GitHub `main`, so pushing GitHub too is part of a release.
-- Release = `npx supabase db push --remote` (migrations first, always) → push `main` to GitHub → Pages workflow. A frontend that queries a column the production database does not have yet shows the error box instead of posts.
+- Release = `npx supabase db push --remote` (migrations first, always) → push `main` to GitHub → Pages workflow. If its deploy step fails with `Failed to create deployment (status: 500)`, start a fresh run with `gh workflow run deploy-pages.yml -R hoang170702/blog-l2m --ref main` (re-running the failed job reused the artifact and failed again). A frontend that queries a column the production database does not have yet shows the error box instead of posts.
 - Commits: Conventional Commits, author `hoangkktt <huyhoang11202@gmail.com>` set per command. Never commit without the user's explicit approval in the conversation (see the global rules).
 
 ## Task routing
@@ -46,6 +46,7 @@ A Vietnamese blog: Vite + React SPA on GitHub Pages, data in Supabase (Postgres 
 - UI copy is Vietnamese; code, comments and docs are English.
 - Public writes go through RPCs with rate limits (`submit_comment`, `report_content`, `record_post_view`); never grant table inserts to `anon`.
 - Chat: private threads are readable only by their two participants; do not add an admin clause to the `messages`/`dm_threads` select policies (decision D2 of the chat plan). Any test that renders `Layout` with a signed-in user must mock `chatApi` and `supabase.channel` (`src/test/chat.ts`).
+- CSP (`frontend/vite.config.ts`): any new host must be added explicitly; Safari does not let an `https://` source cover `wss://`, so Realtime needs its `wss://` origin in `connect-src` (missing it crashed every page for signed-in Safari users).
 - Secrets never enter the repo or chat; the anon key and Supabase URL are public by design.
 - Reading preferences and theme are device-local (`localStorage`), applied in `main.tsx` before the first render.
 - Known gaps and deliberate non-fixes are listed in `docs/ideas.md` (security audit leftovers, data quirks like a `#` typed into a title).

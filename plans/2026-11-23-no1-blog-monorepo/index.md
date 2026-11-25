@@ -4,7 +4,7 @@
 
 Tracker ID: PLAN-20261123-blog-monorepo
 Created: 2026-11-23 09:17 +07
-Last updated: 2026-11-25 19:10 +07 (A042)
+Last updated: 2026-11-25 23:55 +07 (A043)
 Status: In progress
 Plan mode: Exited
 Execution readiness: Ready
@@ -14,7 +14,7 @@ Machines: work alternates between two machines (A011). The bundle under `plans/`
 Workspace: machine A /home/hoangkktt/workspaces/blog-l2m; machine B /home/hoangnh17/workspaces/tool/blog-l2m
 Repository (machine A): /home/hoangkktt/workspaces/blog-l2m (remote origin https://gitlab.com/NguyenHuyHoang170702/blog-l2m.git); worktree /home/hoangkktt/workspaces/blog-l2m/.worktrees/blog-l2m-mvp, branch feature/blog-mvp at 4daba0e (R2 work goes to feature/supabase-pages); template repo /home/hoangkktt/workspaces/cicd-templates (main f97f02d, tags v1.0.0, v1.0.1)
 Repository (machine B): /home/hoangnh17/workspaces/tool/blog-l2m (remote origin https://gitea.com/hoang170702/blog-l2m.git); main checkout on feature/supabase-pages (aa0a1a6), no worktree (user override A013); no cicd-templates checkout
-Active action: None (R4 complete: A029–A038; A039 security fixes; A040 UI-review fixes; A041 reading prefs + audit; A042 member chat, all merged into main and pushed); R4 = 9 feature branches merged into main in order: dark-mode, share-buttons, post-stats, bookmarks, hidden-posts, comment-profanity-filter, follows, series, notifications; then docs + push
+Active action: None (R4 complete: A029–A038; A039 security fixes; A040 UI-review fixes; A041 reading prefs + audit; A042 member chat, all merged into main and pushed; A043 release + evening fixes on machine A, live on GitHub Pages); R4 = 9 feature branches merged into main in order: dark-mode, share-buttons, post-stats, bookmarks, hidden-posts, comment-profanity-filter, follows, series, notifications; then docs + push
 
 <!-- workflow-active-snapshot:start version:2 -->
 ## Active Snapshot
@@ -33,7 +33,7 @@ Next safe action: On machine A pull feature/supabase-pages from Gitea; user crea
 - Last completed: P08 (007ac56..aa0a1a6) on feature/supabase-pages; local Supabase stack running (`npx supabase start`).
 - Current work: P09 + P12 committed and pushed to Gitea (A015); backend/ removed. Remaining: UI smoke + frontend tests on machine A, rest of P11, P10.
 - Blocking decision or dependency: None for P09 code. P09 manual smoke against `supabase start` needs Docker (machine A). P10 needs gitlab.com auth and the cicd-templates repo (machine A).
-- Next safe action (machine A): **first** `npx supabase db push` to production (migrations `20261125100000`–`20261125170000` are missing there; the current frontend shows an error state without them) and add a GitHub remote + push `main` so GitHub Pages leaves the pre-R4 bundle; then pull `main`, `npx supabase db reset` (now includes `20261125160000_notification_limits.sql`), browser smoke of every R4 page, the UI-review fixes (A040) and reading preferences (`plans/2026-11-25-no2-reading-prefs/`) (dark theme, share, bookmarks, hidden-post banner, masked comment + Xem IP + Chặn IP, /following, series, notifications); on Supabase cloud verify `private.comment_clients` captures a real address and user agent. Then the audio feature: read `plans/2026-11-25-no1-audio/`. Earlier: user creates the Google OAuth client (P12 steps 1-4) and the local GitHub OAuth App (P12 "GitHub OAuth setup" 1-3). On machine A, pull feature/supabase-pages from Gitea (plans/ is now tracked), both providers are already enabled (A018, A019), continue at P12 step 6 and GitHub step 5, `npx supabase db reset`, `npm run dev`, smoke, rewrite App.test.tsx; finish P11; then P10.
+- Next safe action: released 2026-11-25 (A043): production database and GitHub Pages are current with `main` 8f4562d. Next: smoke chat and read-aloud on a real iPhone/Safari, verify `private.comment_clients` on Supabase cloud, clean up the NestJS leftovers (`docs/ideas.md` Housekeeping), bump `actions/deploy-pages`. Release = `npx supabase db push --remote` first, then push `main` to `gitea` and `github`.
 - Deferred work (only items the user explicitly excluded or postponed): None.
 - Revalidation required: MR !1 (old architecture) must not be merged; decide close-as-superseded when the R2 MR exists.
 
