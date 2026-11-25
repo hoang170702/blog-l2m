@@ -4,6 +4,10 @@
 
 Let readers listen to a post. The user asked (2026-11-25, steering): "nghiên cứu chức năng audio nhé, tạo plan sẵn đi". The blog runs as a static SPA on Pages + Supabase (Postgres, Auth, Storage 1 GB free, Edge Functions). Storage is scarce: the user already refused ideas that store more images.
 
+## Decision summary
+
+The user first asked for four regional voices (nam/nữ miền Bắc, nam/nữ miền Nam). Only Vietnamese paid TTS services (FPT.AI, Viettel AI, Zalo AI) offer them; Google/Azure have `vi-VN` voices without a southern variant; FPT's free tier (~5k characters/day) covers about one post-voice per day. Asked for a free solution, the user chose the browser's Web Speech API and dropped voice selection. Option B below stays as research only.
+
 ## Research (machine B, code reading + platform knowledge, 2026-11-25)
 
 ### Option A: read the post aloud in the browser (Web Speech API)

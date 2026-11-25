@@ -6,7 +6,7 @@
 
 ## Approval
 
-None yet.
+- 2026-11-25 13:05 +07: user chose "Web Speech API đi, lấy giọng của máy, khỏi chọn" after a comparison of TTS services (regional voices only on paid Vietnamese APIs; free tiers too small). D1, D3 accepted; D2, D4 dropped; Q1 closed. Status: Approved.
 
 ## Amendments
 

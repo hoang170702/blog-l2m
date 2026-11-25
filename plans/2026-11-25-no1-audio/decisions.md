@@ -1,19 +1,18 @@
 # Decisions
 
-## Proposed (awaiting Q1)
+## Accepted (user, 2026-11-25 13:05 +07: "Web Speech API đi, lấy giọng của máy, khỏi chọn")
 
-- D1: Build Option A (read aloud, Web Speech API) first: zero storage, works everywhere a `vi-VN` voice exists, one component `ReadAloud` on the post page.
-- D2: Build Option B (one audio attachment per post) with a hard budget: bucket `post-audio`, 8 MiB per file, 20 files per author (admins exempt), replace-deletes-old, delete-post-deletes-file. Recording in the browser with `MediaRecorder`; uploading an existing MP3/M4A also allowed.
-- D3: No server-side TTS (paid API) in this plan.
-- D4: Player = native `<audio>`; CSP gains `media-src 'self' <supabase>`.
+- D1 (accepted): Read aloud with the browser's Web Speech API only: zero storage, no server, no key. One `ReadAloud` control on the post page using the device's `vi-VN` voice when present, else the default voice with a note. No voice picker.
+- D3 (accepted): No server-side TTS. The user first asked for four regional voices (nam/nữ miền Bắc, nam/nữ miền Nam); only Vietnamese paid services (FPT.AI, Viettel, Zalo) offer them, and the free tiers (FPT ~5k chars/day) cover about one post-voice a day. The user dropped the regional-voice requirement in favour of a free solution.
+
+## Dropped
+
+- D2 (dropped with Q1): author-attached audio files (`post-audio` bucket, MediaRecorder). Kept in context.md as research for later.
+- D4 (dropped with D2): no `<audio>` player, so no CSP `media-src` change.
 
 ## Open Questions
 
-- Q1 (pending): Which layers?
-  1. A + B (read aloud now, attachments with the 20-files cap). Recommended.
-  2. Only A (no storage at all).
-  3. Only B.
-  4. Other.
+- Q1 (answered: Web Speech API only; regional voices dropped).
 
 ## Rejected
 
