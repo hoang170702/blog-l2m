@@ -257,11 +257,23 @@ describe('App', () => {
       },
     )
     openPost()
-    const group = await screen.findByRole('group', { name: 'Nghe bài viết' })
-    await userEvent.setup().click(within(group).getByRole('button', { name: '▶ Nghe' }))
+    const user = userEvent.setup()
+    const toggle = await screen.findByRole('button', { name: 'Nghe bài viết' })
+    await user.click(toggle)
+    const group = screen.getByRole('group', { name: 'Nghe bài viết' })
+    await user.click(within(group).getByRole('button', { name: '▶ Nghe' }))
     expect(spoken[0]?.text).toBe('Hello world')
     expect(within(group).getByRole('button', { name: '❚❚ Tạm dừng' })).toBeInTheDocument()
     expect(screen.queryByText(/không có giọng tiếng Việt/)).toBeNull()
+    // Closing the panel hides it but keeps the reader playing.
+    await user.click(toggle)
+    expect(screen.queryByRole('group', { name: 'Nghe bài viết' })).toBeNull()
+    await user.click(toggle)
+    expect(
+      within(screen.getByRole('group', { name: 'Nghe bài viết' })).getByRole('button', {
+        name: '❚❚ Tạm dừng',
+      }),
+    ).toBeInTheDocument()
     vi.unstubAllGlobals()
   })
 
@@ -269,6 +281,7 @@ describe('App', () => {
     openPost()
     expect(await screen.findByRole('heading', { name: 'Hello world' })).toBeInTheDocument()
     expect(screen.queryByRole('group', { name: 'Nghe bài viết' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Nghe bài viết' })).toBeNull()
   })
 
   it('offers delete to an admin but not to other members', async () => {

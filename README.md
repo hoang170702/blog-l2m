@@ -14,6 +14,7 @@ A multi-author Vietnamese blog: a static React single-page app that talks direct
 - Share buttons (copy link, Facebook, the device's share sheet), light and dark theme (header toggle, follows the system by default).
 - "Nghe bài viết": the browser reads the post with the device's own voice (Web Speech API; Vietnamese voice when the device has one, otherwise its default voice with a note). Nothing is stored; quality depends on the device, and there is no voice choice.
 - "Tuỳ chỉnh đọc": text size (four steps for the post body and comments) and font (Plus Jakarta Sans default, Be Vietnam Pro, Lora, system font), remembered on the device in `localStorage`. The default is the unchanged look.
+- Both controls sit in a floating rail on the right edge of a post (🎧 and Aa); each opens its panel to the left, and closing the panel keeps the speech playing.
 - Member chat: signed-in members get a floating 💬 button (and `/chat`) with one shared room and private 1-1 threads, live through Supabase Realtime, with "n online" presence. Messages go through the profanity mask and a 20-per-minute limit; the room keeps 90 days. A member can block another member (no thread, no messages from them). Admins may delete room messages but **cannot read private threads**; suspension removes chat entirely. Guests see nothing.
 - RSS feed and `sitemap.xml`.
 
