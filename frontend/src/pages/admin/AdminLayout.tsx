@@ -7,6 +7,7 @@ const memberLinks = [
   ['/dashboard', 'Tổng quan', true],
   ['/dashboard/posts', 'Bài viết', false],
   ['/dashboard/comments', 'Bình luận', false],
+  ['/dashboard/saved', 'Đã lưu', false],
   ['/dashboard/profile', 'Hồ sơ', false],
 ] as const
 

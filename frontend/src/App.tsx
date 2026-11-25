@@ -35,6 +35,9 @@ const MembersPage = lazy(() =>
 const ProfilePage = lazy(() =>
   import('./pages/admin/ProfilePage').then((m) => ({ default: m.ProfilePage })),
 )
+const SavedPage = lazy(() =>
+  import('./pages/admin/SavedPage').then((m) => ({ default: m.SavedPage })),
+)
 const ReportsPage = lazy(() =>
   import('./pages/admin/ReportsPage').then((m) => ({ default: m.ReportsPage })),
 )
@@ -80,6 +83,7 @@ export const routes: RouteObject[] = [
           { path: 'posts', element: page(<PostsPage />) },
           { path: 'comments', element: page(<CommentsPage />) },
           { path: 'profile', element: page(<ProfilePage />) },
+          { path: 'saved', element: page(<SavedPage />) },
           {
             element: (
               <RequireAuth admin>
