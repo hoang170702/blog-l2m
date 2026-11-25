@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 import { App } from './App'
@@ -262,7 +262,8 @@ describe('App', () => {
     await user.click(toggle)
     const group = screen.getByRole('group', { name: 'Nghe bài viết' })
     await user.click(within(group).getByRole('button', { name: '▶ Nghe' }))
-    expect(spoken[0]?.text).toBe('Hello world')
+    // The short post is spoken as one utterance, title first.
+    expect(spoken[0]?.text).toMatch(/^Hello world\. /)
     expect(within(group).getByRole('button', { name: '❚❚ Tạm dừng' })).toBeInTheDocument()
     expect(screen.queryByText(/không có giọng tiếng Việt/)).toBeNull()
     // Closing the panel hides it but keeps the reader playing.
@@ -274,6 +275,85 @@ describe('App', () => {
         name: '❚❚ Tạm dừng',
       }),
     ).toBeInTheDocument()
+    vi.unstubAllGlobals()
+  })
+
+  it('keeps reading from the current paragraph when the rate changes', async () => {
+    const spoken: {
+      text: string
+      rate: number
+      onboundary: ((event: { charIndex: number }) => void) | null
+    }[] = []
+    vi.stubGlobal('speechSynthesis', {
+      speak: (u: (typeof spoken)[number]) => spoken.push(u),
+      cancel: vi.fn(),
+      pause: vi.fn(),
+      resume: vi.fn(),
+      getVoices: () => [],
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })
+    vi.stubGlobal(
+      'SpeechSynthesisUtterance',
+      class {
+        text: string
+        rate = 1
+        onboundary: ((event: { charIndex: number }) => void) | null = null
+        constructor(text: string) {
+          this.text = text
+        }
+      },
+    )
+    openPost()
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'Nghe bài viết' }))
+    const group = screen.getByRole('group', { name: 'Nghe bài viết' })
+    await user.click(within(group).getByRole('button', { name: '▶ Nghe' }))
+    // The browser reports a word of the second paragraph.
+    spoken[0].onboundary!({ charIndex: 'Hello world. '.length })
+    expect(await within(group).findByText(/^Đoạn 2\//)).toBeInTheDocument()
+    await user.selectOptions(within(group).getByRole('combobox', { name: 'Tốc độ' }), '1.5')
+    await waitFor(() => expect(spoken.at(-1)?.rate).toBe(1.5))
+    expect(spoken.at(-1)?.text).toBe(spoken[0].text.slice('Hello world. '.length))
+    expect(within(group).getByRole('button', { name: '❚❚ Tạm dừng' })).toBeInTheDocument()
+    vi.unstubAllGlobals()
+  })
+
+  it('lets the reader pick the paragraph to listen from', async () => {
+    const spoken: { text: string }[] = []
+    vi.stubGlobal('speechSynthesis', {
+      speak: (u: { text: string }) => spoken.push(u),
+      cancel: vi.fn(),
+      pause: vi.fn(),
+      resume: vi.fn(),
+      getVoices: () => [],
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    })
+    vi.stubGlobal(
+      'SpeechSynthesisUtterance',
+      class {
+        text: string
+        constructor(text: string) {
+          this.text = text
+        }
+      },
+    )
+    openPost()
+    const user = userEvent.setup()
+    await user.click(await screen.findByRole('button', { name: 'Nghe bài viết' }))
+    const group = screen.getByRole('group', { name: 'Nghe bài viết' })
+    const slider = await within(group).findByRole('slider', { name: 'Đoạn đang nghe' })
+    const last = Number(slider.getAttribute('max'))
+    fireEvent.change(slider, { target: { value: '1' } })
+    expect(within(group).getByText(`Đoạn 2/${last + 1}`)).toBeInTheDocument()
+    await user.click(within(group).getByRole('button', { name: '▶ Nghe' }))
+    const second = spoken[0].text
+    expect(second).not.toBe('Hello world')
+    // Seeking while reading jumps straight there.
+    fireEvent.change(slider, { target: { value: String(last) } })
+    expect(spoken.at(-1)?.text).not.toBe(second)
+    expect(within(group).getByText(`Đoạn ${last + 1}/${last + 1}`)).toBeInTheDocument()
     vi.unstubAllGlobals()
   })
 
