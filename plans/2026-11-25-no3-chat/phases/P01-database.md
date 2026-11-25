@@ -27,4 +27,4 @@ New objects only; a down migration would drop the three tables and the functions
 
 ## Execution Notes
 
-- Commit 6a4e… see `git log`: `feat(db): member chat`. `user_id` and `blocker` default to `auth.uid()` so the API inserts need no id. `chat_test.sql` 24 assertions; all 12 suites green (219 assertions). The publication statement is guarded by a `do` block because PGlite has no `supabase_realtime`.
+- Commit `feat(db): member chat` (see `git log feature/chat`). `user_id` and `blocker` default to `auth.uid()` so the API inserts need no id. `chat_test.sql` 24 assertions; all 12 suites green (219 assertions). The publication statement is guarded by a `do` block because PGlite has no `supabase_realtime`.
