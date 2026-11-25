@@ -1,5 +1,12 @@
 @import '@fontsource-variable/plus-jakarta-sans';
 @import '@fontsource-variable/epilogue';
+/* Optional reading fonts (PLAN-20261125-reading-prefs, D2). Each @font-face carries a
+   unicode-range, so a font is downloaded only once a reader selects it. */
+@import '@fontsource/be-vietnam-pro/400.css';
+@import '@fontsource/be-vietnam-pro/400-italic.css';
+@import '@fontsource/be-vietnam-pro/600.css';
+@import '@fontsource/be-vietnam-pro/700.css';
+@import '@fontsource-variable/lora';
 @import 'tailwindcss';
 @plugin '@tailwindcss/typography';
 
@@ -93,6 +100,25 @@
 
   --s-card: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.4);
   --s-glow: 0 20px 40px -16px rgb(240 74 99 / 0.35);
+}
+
+/* Reading preferences: font for the whole site, size for the post body and comments (D3). */
+[data-font='be-vietnam'] {
+  --font-sans: 'Be Vietnam Pro', system-ui, -apple-system, sans-serif;
+}
+[data-font='lora'] {
+  --font-sans: 'Lora Variable', Georgia, serif;
+}
+[data-font='system'] {
+  --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+/* The post body (`prose-lg` = 1.125rem) and comment text follow the reader's size choice.
+   Unlayered on purpose: the typography utilities live in a later cascade layer. */
+.reader .prose-lg {
+  font-size: var(--reader-size, 1.125rem);
+}
+.reader-text {
+  font-size: var(--reader-size, 1rem);
 }
 
 @layer base {

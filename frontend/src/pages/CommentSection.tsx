@@ -86,7 +86,7 @@ function CommentBody({ comment }: { comment: Comment }) {
             <ReportButton target={{ commentId: comment.id }} />
           </span>
         </p>
-        <p className="mt-1 whitespace-pre-line">{comment.content}</p>
+        <p className="reader-text mt-1 whitespace-pre-line">{comment.content}</p>
         {comment.masked && (
           <p className="mt-2 rounded-xl bg-warning-soft px-3 py-1.5 text-xs font-semibold text-warning">
             ⚠ Hệ thống đã che từ ngữ không phù hợp trong bình luận này.

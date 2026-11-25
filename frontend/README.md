@@ -34,4 +34,6 @@ The production image (`Dockerfile`) serves `dist/` with Nginx (`nginx/default.co
 
 Build uses TypeScript 7 (native binary), which needs a glibc image (`node:22-slim`), not Alpine.
 
-Theme: the colors in `src/index.css` are CSS variables on `:root` (light) and `[data-theme='dark']`; `src/lib/theme.ts` sets `data-theme` from `localStorage.theme` or the system preference, and the `dark:` Tailwind variant follows that attribute.
+Theme: the colors in `src/index.css` are CSS variables on `:root` (light) and `[data-theme='dark']`; `src/lib/theme.ts` sets `data-theme` from `localStorage.theme` or the system preference, and the `dark:` Tailwind variant follows that attribute. Status colors (`danger`, `warning`, `success`, `on-primary`) are tokens too; do not use Tailwind palette classes (`red-600`, `amber-50`) for them.
+
+Reading preferences: `src/lib/readingPrefs.ts` stores `{ font, size }` in `localStorage['reading-prefs']` and applies `data-font` on `<html>` (swaps `--font-sans`) plus `--reader-size` (read by `.reader .prose-lg` and `.reader-text`). Fonts are self-hosted through `@fontsource` because the CSP has `font-src 'self'`; every `@font-face` carries a `unicode-range`, so a font downloads only when selected. To add a font: install its `@fontsource` package (needs a `vietnamese` subset), `@import` it in `src/index.css`, add a `[data-font='<id>']` block setting `--font-sans`, and add the row to `FONTS` in `readingPrefs.ts`.

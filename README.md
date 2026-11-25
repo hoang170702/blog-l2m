@@ -13,6 +13,7 @@ A multi-author Vietnamese blog: a static React single-page app that talks direct
 - Series: posts grouped in order, with previous/next links and a `/series/:slug` page.
 - Share buttons (copy link, Facebook, the device's share sheet), light and dark theme (header toggle, follows the system by default).
 - "Nghe bài viết": the browser reads the post with the device's own voice (Web Speech API; Vietnamese voice when the device has one, otherwise its default voice with a note). Nothing is stored; quality depends on the device, and there is no voice choice.
+- "Tuỳ chỉnh đọc": text size (four steps for the post body and comments) and font (Plus Jakarta Sans default, Be Vietnam Pro, Lora, system font), remembered on the device in `localStorage`. The default is the unchanged look.
 - RSS feed and `sitemap.xml`.
 
 **Authors** (sign in with Google or GitHub; the first sign-in creates the account)

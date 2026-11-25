@@ -17,6 +17,7 @@ Details and commits are in `plans/2026-11-23-no1-blog-monorepo/` (decisions D34-
 - 2026-11-24: RSS feed and sitemap (Edge Function `feed`); reading time, table of contents and related posts; view counts (one per address, post and hour) and likes; one level of comment replies; local autosave in the editor; scheduled publishing; reports with an admin queue, account suspension, and rate limits on new posts (10/hour) and image uploads (30/hour); delete from the post page for the author or an admin; profile page. Migrations `20261124090000`-`20261124090200`.
 - 2026-11-25 (R4, one feature branch each, merged into `main`): dark theme (D45); share buttons (D46); comment counts and view/like totals on the dashboard (D48); bookmarks (D42); admin hide via `posts.hidden_at` (D49); profanity mask with partial IP, full IP + device for admins/author, IP blocks (D50); follows and `/following` (D43); series (D47); in-app notifications (D44). Migrations `20261125100000`-`20261125150000`. Dropped: draft preview links (idea 7), CSS default covers (idea 10).
 - 2026-11-25: "Nghe bài viết" with the browser's Web Speech API (`plans/2026-11-25-no1-audio/`, D1). No storage, no server. The user first wanted four regional voices (nam/nữ Bắc, nam/nữ Nam): only paid Vietnamese TTS (FPT.AI, Viettel, Zalo) has them and the free tiers cover about one post-voice a day, so voice choice was dropped.
+- 2026-11-25: UI review with the evondev `ui-ux` skill (14 rows; all fixed except the data row): friendly error state with retry, status-color tokens for both themes, header rows, meta separators, logo/hero contrast, dark primary contrast via `--c-on-primary`, card hover without motion, two-column grid from `lg`. Then reading preferences (`plans/2026-11-25-no2-reading-prefs/`): text size and font picker on the post page, device-local, default unchanged.
 - 2026-11-25: security-audit fixes (migration `20261125160000`): one like notification per liker and post and one new-post notification per follower and post (unique index, `on conflict do nothing`), no follower notification for a post an admin hid, the API role may only update `comments.status` (authors could rewrite `content`, `masked`, `client_hint` before), and the read-aloud Markdown stripper uses bounded regexes (an unclosed `<a<a…` body of 40 kB took 5 s to convert before, 20 ms after).
 
 ## Accepted direction
@@ -45,6 +46,7 @@ Scope: one migration, `submit_comment`, frontend, tests. No backfill: comments h
 
 ## Writing
 
+- Reading preferences follow-ups: line-height and column-width options; apply the size to the home cards too if readers ask; sync the choice to the account once a settings table exists.
 - Audio follow-ups: regional voices through FPT.AI/Viettel TTS (paid, Edge Function + `post-audio` bucket, see the audio plan's context.md); author recordings per post (researched as Option B there); highlight the paragraph being read.
 
 ## Community safety
