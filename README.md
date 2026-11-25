@@ -12,6 +12,7 @@ A multi-author Vietnamese blog: a static React single-page app that talks direct
 - Signed-in readers bookmark posts (`/dashboard/saved`), follow authors (`/following` lists their posts) and get in-app notifications (a comment or like on their post, a new post by an author they follow).
 - Series: posts grouped in order, with previous/next links and a `/series/:slug` page.
 - Share buttons (copy link, Facebook, the device's share sheet), light and dark theme (header toggle, follows the system by default).
+- "Nghe bài viết": the browser reads the post with the device's own voice (Web Speech API; Vietnamese voice when the device has one, otherwise its default voice with a note). Nothing is stored; quality depends on the device, and there is no voice choice.
 - RSS feed and `sitemap.xml`.
 
 **Authors** (sign in with Google or GitHub; the first sign-in creates the account)

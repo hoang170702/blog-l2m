@@ -1,6 +1,6 @@
 # P03: Docs and smoke
 
-Status: Pending
+Status: Completed (2026-11-25 13:45 +07, machine B; browser smoke left to machine A)
 Depends on: P01
 Wave: 2
 Subagent: Not eligible — closes the record
@@ -9,10 +9,10 @@ Produces: documented feature, closed plan, smoke list for machine A
 
 ## Tasks
 
-- [ ] README Features: "Nghe bài viết" read by the device voice (Web Speech API; quality depends on the device, no voice choice).
-- [ ] `docs/ideas.md`: move audio to Done; add follow-ups (regional voices via FPT.AI/Viettel paid TTS, author recordings per context.md Option B, highlight the paragraph being read).
-- [ ] Plan: evidence per phase with commit/merge SHAs, verification results, `Status: Implemented`.
-- [ ] Push `main` + feature branches to Gitea.
+- [x] README Features: "Nghe bài viết" read by the device voice (Web Speech API; quality depends on the device, no voice choice).
+- [x] `docs/ideas.md`: move audio to Done; add follow-ups (regional voices via FPT.AI/Viettel paid TTS, author recordings per context.md Option B, highlight the paragraph being read).
+- [x] Plan: evidence per phase with commit/merge SHAs, verification results, `Status: Implemented`.
+- [x] Push `main` + feature branches to Gitea.
 
 ## Verification
 
@@ -24,4 +24,4 @@ Docs only.
 
 ## Execution Notes
 
-(none yet)
+- README feature line, `docs/ideas.md` Done + follow-ups, this bundle closed. Pushed `main` and `feature/read-aloud` to Gitea.

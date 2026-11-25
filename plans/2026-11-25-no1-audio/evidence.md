@@ -14,7 +14,8 @@ None at approval.
 
 ## Execution Log
 
-None yet.
+<!-- workflow-action:A001 status:completed -->
+- A001 (completed 2026-11-25 13:45 +07, machine B): user `/kiro-execute` on the approved bundle. P01 on `feature/read-aloud` (1e4744c6, 246d4654; merges d2c51fb4, f82b8db7), P03 docs. Checks after each merge: 190 pgTAP, 68 vitest, typecheck, lint (2 pre-existing warnings), build. Browser smoke pending on machine A.
 
 ## Handoff Notes
 
