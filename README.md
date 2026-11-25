@@ -8,23 +8,27 @@ A multi-author Vietnamese blog: a static React single-page app that talks direct
 - Home page with one column of posts, category, tag and author pages (`/u/:id`), pagination.
 - Search over title, excerpt and content that ignores case and Vietnamese accents ("lap trinh" finds "Lập trình").
 - Post page: Markdown (sanitized, code highlighting), 16:9 cover, reading time, table of contents for h2/h3, view and like counts, related posts (same category or tag).
-- Comments without an account, shown immediately, with one level of replies; a report button on posts and comments.
+- Comments without an account, shown immediately, with one level of replies; a report button on posts and comments. Banned words are replaced by `*` in the database; such a comment carries a warning line with a partial address of the commenter (`113.161.*.*`). The full address and user agent are personal data: they stay in the `private` schema and are shown only to admins and the post's author.
+- Signed-in readers bookmark posts (`/dashboard/saved`), follow authors (`/following` lists their posts) and get in-app notifications (a comment or like on their post, a new post by an author they follow).
+- Series: posts grouped in order, with previous/next links and a `/series/:slug` page.
+- Share buttons (copy link, Facebook, the device's share sheet), light and dark theme (header toggle, follows the system by default).
 - RSS feed and `sitemap.xml`.
 
 **Authors** (sign in with Google or GitHub; the first sign-in creates the account)
 - Markdown editor with toolbar, shortcuts, live preview and one cover image per post (cropped to 16:9 in the browser).
 - Publish now, save a draft, or schedule publishing for a later time.
 - The editor autosaves to the browser every few seconds and offers the copy back after a crash or an expired session.
-- Dashboard: own posts with views and likes, comments on own posts (hide, show again, delete), profile (display name, avatar URL).
+- Dashboard: own posts with views, likes and comment counts plus totals, comments on own posts (hide, show again, delete; "Xem IP" shows the commenter's address and device), notifications, saved posts, profile (display name, avatar URL).
 - Only the author edits a post; the author or an admin deletes it (from the post page or the post list).
 
 **Admins**
 - Categories and tags.
 - Every post and comment.
-- Report queue (`/dashboard/reports`): hide or delete the reported content, mark the report resolved or dismissed.
+- Report queue (`/dashboard/reports`): hide (a hidden post stays visible only to its author, with a banner, and to admins) or delete the reported content, mark the report resolved or dismissed.
+- Moderation (`/dashboard/moderation`): banned-word list and blocked addresses; "Chặn IP" under a comment blocks that address from commenting.
 - Members (`/dashboard/members`): search by name or email, suspend or restore an account. A suspended member can still read and sign in but cannot write, upload, like or edit their profile.
 
-**Abuse limits** (enforced in the database): 3 comments a minute and 5 reports per 10 minutes per client address, 10 new posts and 30 image uploads per hour per author, views counted once per address, post and hour, 2 MiB images (WebP, JPEG, PNG, GIF).
+**Abuse limits** (enforced in the database): 3 comments a minute and 5 reports per 10 minutes per client address, 10 new posts and 30 image uploads per hour per author, views counted once per address, post and hour, 2 MiB images (WebP, JPEG, PNG, GIF), blocked addresses refused in `submit_comment`.
 
 ## Architecture
 
@@ -45,7 +49,7 @@ flowchart LR
 ```
 
 - **Frontend** (`frontend/`): Vite + React + TypeScript, TanStack Query, Tailwind. `src/api/endpoints.ts` is the only data layer; it shapes queries and maps rows but never decides access. Production builds add a strict CSP meta tag, `404.html` for SPA deep links, the RSS `<link>` and `robots.txt`.
-- **Database** (`supabase/migrations/`): tables `posts`, `categories`, `tags`, `post_tags`, `comments`, `profiles`, `post_stats`, `post_likes`, `reports`. Row-level security decides who reads and writes what: visitors read published posts whose publish time has passed; members write only their own posts, tags and images; post authors moderate comments on their posts; admins (`private.site_admins`) manage everything. Guest-facing writes go through `security definer` RPCs with validation and rate limits (`submit_comment`, `report_content`, `record_post_view`); admin RPCs (`admin_list_users`, `admin_set_suspended`) check the caller first. The `private` schema (admin registry, suspensions, rate-limit counters) is not exposed through the API.
+- **Database** (`supabase/migrations/`): tables `posts`, `categories`, `tags`, `post_tags`, `comments`, `profiles`, `post_stats`, `post_likes`, `reports`, `bookmarks`, `follows`, `series`, `notifications`, `banned_words`. Row-level security decides who reads and writes what: visitors read published posts whose publish time has passed and that no admin hid (`private.is_live()`); members write only their own posts, tags and images; post authors moderate comments on their posts; admins (`private.site_admins`) manage everything. Guest-facing writes go through `security definer` RPCs with validation and rate limits (`submit_comment`, `report_content`, `record_post_view`); admin RPCs (`admin_list_users`, `admin_set_suspended`, `admin_set_hidden`, `admin_block_client`, ...) check the caller first. Notifications are written by triggers. The `private` schema (admin registry, suspensions, rate-limit counters, commenter addresses, blocked addresses) is not exposed through the API.
 - **Storage**: public `post-images` bucket; each member writes only inside a folder named after their user id. Replaced or orphaned covers are deleted by the client when a post is saved or deleted.
 - **Edge Function** `feed` (`supabase/functions/feed`): serves `rss.xml` and `sitemap.xml` from published posts, with no JWT required.
 

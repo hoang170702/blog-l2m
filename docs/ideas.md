@@ -6,7 +6,7 @@ Current baseline: multi-author Markdown posts, Google/GitHub sign-in, categories
 
 ## Done
 
-Details and commits are in `plans/2026-11-23-no1-blog-monorepo/` (decisions D34-D41, evidence A016-A027).
+Details and commits are in `plans/2026-11-23-no1-blog-monorepo/` (decisions D34-D50, evidence A016-A038).
 
 - Comments without moderation (D34).
 - One 16:9 cover per post, no images in the body (D37).
@@ -15,6 +15,7 @@ Details and commits are in `plans/2026-11-23-no1-blog-monorepo/` (decisions D34-
 - Search over title, excerpt and content, ignoring case and Vietnamese accents (D40).
 - Author page `/u/:id` (D41).
 - 2026-11-24: RSS feed and sitemap (Edge Function `feed`); reading time, table of contents and related posts; view counts (one per address, post and hour) and likes; one level of comment replies; local autosave in the editor; scheduled publishing; reports with an admin queue, account suspension, and rate limits on new posts (10/hour) and image uploads (30/hour); delete from the post page for the author or an admin; profile page. Migrations `20261124090000`-`20261124090200`.
+- 2026-11-25 (R4, one feature branch each, merged into `main`): dark theme (D45); share buttons (D46); comment counts and view/like totals on the dashboard (D48); bookmarks (D42); admin hide via `posts.hidden_at` (D49); profanity mask with partial IP, full IP + device for admins/author, IP blocks (D50); follows and `/following` (D43); series (D47); in-app notifications (D44). Migrations `20261125100000`-`20261125150000`. Dropped: draft preview links (idea 7), CSS default covers (idea 10).
 
 ## Accepted direction
 
@@ -37,18 +38,17 @@ Scope: one migration, `submit_comment`, frontend, tests. No backfill: comments h
 
 ## Engagement
 
-- Email the author about new comments on their posts (Supabase Edge Function).
-- Bookmarks / read later for signed-in users.
+- Email the author about new comments on their posts (Supabase Edge Function); in-app notifications exist, email does not.
+- Notify followers when a scheduled post's time arrives (today the notification goes out when the author publishes, which for a scheduled post is before it is readable).
 
 ## Writing
 
-- Post series with an ordered list of parts.
-- Shareable preview link for a draft, to get feedback before publishing.
-- Per-post stats on the dashboard: views, comments, reactions.
+- Audio: read a post aloud or attach a recording (being planned, see `plans/2026-11-25-no1-audio/`).
 
 ## Community safety
 
-- Hide a post without deleting it (admins can delete reported posts and suspend their authors today).
+- Profanity filter matches whole words only; split or disguised spellings ("đ.m", "v c l") get through. A normalization step (strip punctuation between single letters) would catch more.
+- IP blocks are temporary by nature (mobile networks, VPNs); a block by account for signed-in commenters would be stronger once comments require sign-in.
 
 ## Measurement
 
@@ -61,7 +61,8 @@ Scope: one migration, `submit_comment`, frontend, tests. No backfill: comments h
 
 ## Suggested order
 
-1. Clean up covers uploaded but never saved (scheduled job over `storage.objects` not referenced by `posts.cover_image_path`; needs an Edge Function with the service key, because Storage files cannot be deleted through SQL).
+1. Verify on Supabase cloud what machine B could not: IP and user-agent capture in `private.comment_clients` (locally the address is `unknown`), the Edge Function `feed`, and every new page in a browser.
+2. Clean up covers uploaded but never saved (scheduled job over `storage.objects` not referenced by `posts.cover_image_path`; needs an Edge Function with the service key, because Storage files cannot be deleted through SQL).
 
 ## Rejected
 

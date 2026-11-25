@@ -33,3 +33,5 @@ Locally, `npx supabase functions serve` serves it with `SITE_URL` from `supabase
 The production image (`Dockerfile`) serves `dist/` with Nginx (`nginx/default.conf`), proxies `/api/` to the `backend` container and serves uploaded files from `/usr/share/nginx/uploads`. It listens on plain HTTP; TLS is terminated by the edge proxy.
 
 Build uses TypeScript 7 (native binary), which needs a glibc image (`node:22-slim`), not Alpine.
+
+Theme: the colors in `src/index.css` are CSS variables on `:root` (light) and `[data-theme='dark']`; `src/lib/theme.ts` sets `data-theme` from `localStorage.theme` or the system preference, and the `dark:` Tailwind variant follows that attribute.
