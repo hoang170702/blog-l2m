@@ -49,7 +49,10 @@ export function Layout() {
             )}
           </nav>
           <div className="order-2 ml-auto flex items-center gap-2 lg:order-3 lg:ml-0">
-            <Link to={user ? '/write' : '/login'} className="btn-primary py-2">
+            <Link
+              to={user ? '/write' : '/login'}
+              className={`btn-primary py-2 ${user ? '' : 'hidden sm:inline-flex'}`}
+            >
               ✍️ <span className="hidden sm:inline">Viết bài</span>
             </Link>
             <ThemeToggle />

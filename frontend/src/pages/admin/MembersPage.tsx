@@ -69,7 +69,7 @@ export function MembersPage() {
                       Quản trị
                     </span>
                   )}
-                  <p className="text-xs text-muted">
+                  <p className="text-xs break-words text-muted">
                     {member.email} · tham gia {formatDate(member.createdAt)} · {member.postCount}{' '}
                     bài
                   </p>
