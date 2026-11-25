@@ -8,6 +8,7 @@ import { useAuth } from '../auth/AuthContext'
 import { Markdown } from '../components/Markdown'
 import { AuthorChip, TagList } from '../components/PostCard'
 import { ReportButton } from '../components/ReportButton'
+import { ShareButtons } from '../components/ShareButtons'
 import { Avatar } from '../components/UserMenu'
 import { ErrorMessage, Spinner } from '../components/Status'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
@@ -121,8 +122,9 @@ export function PostPage() {
         />
       )}
       <PostBody post={post} />
-      <div className="mt-4 flex items-center gap-4">
+      <div className="mt-4 flex flex-wrap items-center gap-4">
         <LikeButton post={post} />
+        <ShareButtons title={post.title} />
         <span className="ml-auto">
           <ReportButton target={{ postId: post.id }} label="Báo cáo bài viết" />
         </span>
