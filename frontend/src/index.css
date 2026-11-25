@@ -3,26 +3,72 @@
 @import 'tailwindcss';
 @plugin '@tailwindcss/typography';
 
+/* The `dark:` variant follows the data-theme attribute set by src/lib/theme.ts (D45). */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
 @theme {
   --font-sans: 'Plus Jakarta Sans Variable', system-ui, -apple-system, sans-serif;
   --font-display: 'Epilogue Variable', 'Plus Jakarta Sans Variable', sans-serif;
+}
+
+/* Colors are CSS variables so the dark theme only swaps the values below. */
+@theme inline {
+  --color-primary: var(--c-primary);
+  --color-primary-hover: var(--c-primary-hover);
+  --color-primary-dark: var(--c-primary-dark);
+  --color-primary-soft: var(--c-primary-soft);
+  --color-secondary: var(--c-secondary);
+  --color-secondary-dark: var(--c-secondary-dark);
+  --color-secondary-soft: var(--c-secondary-soft);
+  --color-canvas: var(--c-canvas);
+  --color-surface: var(--c-surface);
+  --color-ink: var(--c-ink);
+  --color-muted: var(--c-muted);
+  --color-line: var(--c-line);
+
+  --shadow-card: var(--s-card);
+  --shadow-glow: var(--s-glow);
+}
+
+:root {
+  color-scheme: light;
 
   /* Crimson red + golden amber */
-  --color-primary: #c8102e;
-  --color-primary-hover: #a50d26;
-  --color-primary-dark: #8c0b20;
-  --color-primary-soft: #fdecee;
-  --color-secondary: #f2a900;
-  --color-secondary-dark: #8a5d00;
-  --color-secondary-soft: #fff5d6;
-  --color-canvas: #fbf8f3;
-  --color-surface: #ffffff;
-  --color-ink: #2b1a14;
-  --color-muted: #786660;
-  --color-line: #efe6dc;
+  --c-primary: #c8102e;
+  --c-primary-hover: #a50d26;
+  --c-primary-dark: #8c0b20;
+  --c-primary-soft: #fdecee;
+  --c-secondary: #f2a900;
+  --c-secondary-dark: #8a5d00;
+  --c-secondary-soft: #fff5d6;
+  --c-canvas: #fbf8f3;
+  --c-surface: #ffffff;
+  --c-ink: #2b1a14;
+  --c-muted: #786660;
+  --c-line: #efe6dc;
 
-  --shadow-card: 0 1px 3px 0 rgb(43 26 20 / 0.06), 0 1px 2px -1px rgb(43 26 20 / 0.06);
-  --shadow-glow: 0 20px 40px -16px rgb(200 16 46 / 0.3);
+  --s-card: 0 1px 3px 0 rgb(43 26 20 / 0.06), 0 1px 2px -1px rgb(43 26 20 / 0.06);
+  --s-glow: 0 20px 40px -16px rgb(200 16 46 / 0.3);
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --c-primary: #f04a63;
+  --c-primary-hover: #ff6a80;
+  --c-primary-dark: #ff9aab;
+  --c-primary-soft: #3a1a21;
+  --c-secondary: #ffbf2e;
+  --c-secondary-dark: #ffd97a;
+  --c-secondary-soft: #3a2f14;
+  --c-canvas: #16110f;
+  --c-surface: #211915;
+  --c-ink: #f4ece6;
+  --c-muted: #a8968e;
+  --c-line: #342a25;
+
+  --s-card: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.4);
+  --s-glow: 0 20px 40px -16px rgb(240 74 99 / 0.35);
 }
 
 @layer base {
