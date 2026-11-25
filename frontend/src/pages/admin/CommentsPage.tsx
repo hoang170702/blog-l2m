@@ -8,6 +8,7 @@ import { Pagination } from '../../components/Pagination'
 import { Empty, ErrorMessage, Spinner } from '../../components/Status'
 import { useDocumentTitle } from '../../lib/useDocumentTitle'
 import { formatDate } from '../../lib/format'
+import { describeUserAgent } from '../../lib/userAgent'
 
 const statusLabels: Record<CommentStatus, string> = {
   APPROVED: 'Đang hiện',
@@ -77,6 +78,14 @@ export function CommentsPage() {
                 <p className="text-sm text-muted">
                   <strong className="text-ink">{comment.authorName}</strong> ·{' '}
                   {formatDate(comment.createdAt)} · {statusLabels[comment.status]} ·{' '}
+                  {comment.masked && (
+                    <span
+                      className="font-semibold text-amber-700"
+                      title="Hệ thống đã che từ ngữ không phù hợp"
+                    >
+                      Đã che ·{' '}
+                    </span>
+                  )}
                   <Link to={`/posts/${comment.post.slug}`} className="hover:underline">
                     {comment.post.title}
                   </Link>
@@ -104,6 +113,7 @@ export function CommentsPage() {
                   >
                     Xoá
                   </button>
+                  <CommentClientInfo commentId={comment.id} isAdmin={Boolean(user?.isAdmin)} />
                 </div>
               </li>
             ))}
@@ -117,5 +127,50 @@ export function CommentsPage() {
         </>
       )}
     </section>
+  )
+}
+
+/** "Xem IP": full address and device for admins and the post's author; admins can block it (D50). */
+function CommentClientInfo({ commentId, isAdmin }: { commentId: string; isAdmin: boolean }) {
+  const queryClient = useQueryClient()
+  const [open, setOpen] = useState(false)
+  const info = useQuery({
+    queryKey: ['comment-client', commentId],
+    queryFn: () => adminApi.commentClient(commentId),
+    enabled: open,
+  })
+  const block = useMutation({
+    mutationFn: (blocked: boolean) => adminApi.blockCommentClient(commentId, blocked),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ['blocked-clients'] })
+      return queryClient.invalidateQueries({ queryKey: ['comment-client'] })
+    },
+  })
+  if (!open) {
+    return (
+      <button className="text-muted hover:underline" onClick={() => setOpen(true)}>
+        Xem IP
+      </button>
+    )
+  }
+  if (info.isPending) return <span className="text-muted">…</span>
+  if (info.error) return <span className="text-red-600">{info.error.message}</span>
+  if (!info.data) return <span className="text-muted">Không có thông tin.</span>
+  const device = describeUserAgent(info.data.userAgent)
+  return (
+    <span className="flex flex-wrap items-center gap-2 text-muted">
+      <code className="font-bold text-ink">{info.data.client}</code>
+      {device && <span title={info.data.userAgent ?? ''}>· {device}</span>}
+      {isAdmin && info.data.client !== 'unknown' && (
+        <button
+          className={`font-semibold hover:underline ${info.data.blocked ? 'text-green-700' : 'text-red-600'}`}
+          disabled={block.isPending}
+          onClick={() => block.mutate(!info.data!.blocked)}
+        >
+          {info.data.blocked ? 'Bỏ chặn IP' : 'Chặn IP'}
+        </button>
+      )}
+      {block.error && <span className="text-red-600">{block.error.message}</span>}
+    </span>
   )
 }

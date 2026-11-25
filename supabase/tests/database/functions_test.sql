@@ -20,7 +20,8 @@ select is(
     where n.nspname = 'public' and p.prokind = 'f'
       and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')
       and has_function_privilege('authenticated', p.oid, 'execute')),
-  array['admin_list_users', 'admin_set_hidden', 'admin_set_suspended', 'get_my_admin_status',
+  array['admin_block_client', 'admin_list_blocked_clients', 'admin_list_users', 'admin_set_hidden',
+        'admin_set_suspended', 'admin_unblock_client', 'comment_client', 'get_my_admin_status',
         'get_my_suspension_status', 'record_post_view', 'report_content', 'submit_comment'],
   'signed-in callers can execute only the app RPCs'
 );

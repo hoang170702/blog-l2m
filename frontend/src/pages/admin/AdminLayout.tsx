@@ -16,6 +16,7 @@ const adminLinks = [
   ['/dashboard/tags', 'Thẻ'],
   ['/dashboard/reports', 'Báo cáo'],
   ['/dashboard/members', 'Thành viên'],
+  ['/dashboard/moderation', 'Kiểm duyệt'],
 ] as const
 
 function navClass({ isActive }: { isActive: boolean }) {
