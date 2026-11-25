@@ -33,8 +33,7 @@ export function subscribeMessages(client: MinimalClient, events: MessageEvents):
     .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, (payload) =>
       events.onDelete((payload.old as { id: string }).id),
     )
-    .subscribe()
-  return () => void client.removeChannel(channel)
+  return subscribeSafely(client, channel, () => channel.subscribe())
 }
 
 /** Presence in the shared room: calls `onCount` with the number of distinct members online. */
@@ -46,13 +45,33 @@ export function trackPresence(
   const channel: RealtimeChannel = client.channel('room-presence', {
     config: { presence: { key: userId } },
   })
-  channel
-    .on('presence', { event: 'sync' }, () => {
-      onCount(Object.keys(channel.presenceState()).length)
-    })
-    .subscribe((status) => {
+  channel.on('presence', { event: 'sync' }, () => {
+    onCount(Object.keys(channel.presenceState()).length)
+  })
+  return subscribeSafely(client, channel, () =>
+    channel.subscribe((status) => {
       if (status === 'SUBSCRIBED') void channel.track({ at: Date.now() })
-    })
+    }),
+  )
+}
+
+/**
+ * Opening the socket throws synchronously when the browser refuses it (Safari: "The operation
+ * is insecure" under a blocking CSP or network policy). Chat then works without live updates
+ * instead of the error taking down every page that renders the dock.
+ */
+function subscribeSafely(
+  client: MinimalClient,
+  channel: RealtimeChannel,
+  subscribe: () => void,
+): () => void {
+  try {
+    subscribe()
+  } catch (error) {
+    console.warn('Realtime unavailable', error)
+    void client.removeChannel(channel)
+    return () => {}
+  }
   return () => void client.removeChannel(channel)
 }
 

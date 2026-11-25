@@ -61,4 +61,19 @@ describe('chat helpers', () => {
     off()
     expect(client.removeChannel).toHaveBeenCalledWith(channel)
   })
+
+  it('keeps going without live updates when the browser refuses the socket', () => {
+    const channel = {
+      on: vi.fn(() => channel),
+      subscribe: vi.fn(() => {
+        throw new DOMException('The operation is insecure.', 'SecurityError')
+      }),
+    }
+    const client = { channel: vi.fn(() => channel), removeChannel: vi.fn() }
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    const off = subscribeMessages(client as never, { onInsert: vi.fn(), onDelete: vi.fn() })
+    expect(client.removeChannel).toHaveBeenCalledWith(channel)
+    expect(() => off()).not.toThrow()
+    warn.mockRestore()
+  })
 })
