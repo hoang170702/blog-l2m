@@ -32,6 +32,8 @@ const emptyPost: PostInput = {
   status: 'PUBLISHED',
   categoryId: null,
   tagIds: [],
+  seriesId: null,
+  seriesOrder: null,
 }
 
 function toInput(post: AdminPost): PostInput {
@@ -44,6 +46,8 @@ function toInput(post: AdminPost): PostInput {
     status: post.status,
     categoryId: post.category?.id ?? null,
     tagIds: post.tags.map((tag) => tag.id),
+    seriesId: post.seriesId,
+    seriesOrder: post.seriesOrder,
   }
 }
 
@@ -152,6 +156,20 @@ function PostForm({
     queryFn: () => publicApi.terms('categories'),
   })
   const tags = useQuery({ queryKey: ['terms', 'tags'], queryFn: () => publicApi.terms('tags') })
+  const series = useQuery({ queryKey: ['my-series'], queryFn: adminApi.mySeries })
+  const [newSeries, setNewSeries] = useState('')
+  const createSeries = useMutation({
+    mutationFn: (title: string) => adminApi.createSeries(title),
+    onSuccess: async (created) => {
+      setNewSeries('')
+      setPost((current) => ({
+        ...current,
+        seriesId: created.id,
+        seriesOrder: current.seriesOrder ?? 1,
+      }))
+      await queryClient.invalidateQueries({ queryKey: ['my-series'] })
+    },
+  })
 
   // Unsaved-changes guard: in-app navigation asks first, tab close/reload gets the browser prompt.
   const dirty = !sameInput(post, initial) || schedule !== initialSchedule
@@ -568,6 +586,68 @@ function PostForm({
                   <ErrorMessage error={createTag.error} />
                 </div>
               )}
+            </fieldset>
+
+            <fieldset className="space-y-2">
+              <legend className="text-sm font-bold">Series</legend>
+              <select
+                value={post.seriesId ?? ''}
+                onChange={(e) =>
+                  setPost((current) => ({
+                    ...current,
+                    seriesId: e.target.value || null,
+                    seriesOrder: e.target.value ? (current.seriesOrder ?? 1) : null,
+                  }))
+                }
+                aria-label="Series"
+                className="input py-2 font-normal"
+              >
+                <option value="">— Không thuộc series —</option>
+                {series.data?.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.title}
+                  </option>
+                ))}
+              </select>
+              {post.seriesId && (
+                <label className="block text-sm">
+                  Thứ tự trong series
+                  <input
+                    type="number"
+                    min={1}
+                    value={post.seriesOrder ?? ''}
+                    onChange={(e) =>
+                      update('seriesOrder', e.target.value ? Number(e.target.value) : null)
+                    }
+                    className="input mt-1 py-2 font-normal"
+                  />
+                </label>
+              )}
+              <div className="flex gap-2">
+                <input
+                  value={newSeries}
+                  onChange={(e) => setNewSeries(e.target.value)}
+                  placeholder="Tạo series mới…"
+                  aria-label="Tên series mới"
+                  maxLength={120}
+                  className="input flex-1 py-2 text-sm font-normal"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && newSeries.trim()) {
+                      e.preventDefault()
+                      createSeries.mutate(newSeries)
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  className="btn-ghost py-2 text-sm"
+                  disabled={!newSeries.trim() || createSeries.isPending}
+                  onClick={() => createSeries.mutate(newSeries)}
+                >
+                  Tạo
+                </button>
+              </div>
+              {createSeries.isError && <ErrorMessage error={createSeries.error} />}
             </fieldset>
 
             <details className="text-sm">

@@ -28,8 +28,28 @@ export interface PostSummary {
   likes: number
 }
 
+/** A series the post belongs to, with every live part in order (D47). */
+export interface PostSeries {
+  id: string
+  title: string
+  slug: string
+  description: string | null
+  /** This post's position (1-based). */
+  order: number | null
+  parts: { title: string; slug: string; order: number | null }[]
+}
+
+export interface Series {
+  id: string
+  title: string
+  slug: string
+  description: string | null
+  authorId: string
+}
+
 export interface PostDetail extends PostSummary {
   content: string
+  series: PostSeries | null
   /** Set when an admin hid the post (D49); only its author and admins can load it then. */
   hiddenAt: string | null
 }
@@ -43,6 +63,8 @@ export interface AdminPost extends PostDetail {
   createdAt: string
   updatedAt: string
   hiddenAt: string | null
+  seriesId: string | null
+  seriesOrder: number | null
   /** Comments on the post, all statuses (D48). */
   comments: number
 }
@@ -128,6 +150,9 @@ export interface PostInput {
   publishedAt?: string | null
   categoryId: string | null
   tagIds: string[]
+  /** Own series to file the post under (D47); null leaves any series. */
+  seriesId?: string | null
+  seriesOrder?: number | null
 }
 
 export interface ProfileInput {

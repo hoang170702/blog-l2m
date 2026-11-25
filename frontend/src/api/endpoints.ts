@@ -21,11 +21,13 @@ import type {
   Page,
   PostDetail,
   PostInput,
+  PostSeries,
   PostStatus,
   PostSummary,
   ProfileInput,
   Report,
   ReportStatus,
+  Series,
   ReportTarget,
   Term,
   User,
@@ -57,6 +59,14 @@ interface ProfileRow {
   bio?: string | null
 }
 
+interface SeriesRow {
+  id: string
+  title: string
+  slug: string
+  description: string | null
+  author_id: string
+}
+
 interface PostRow {
   id: string
   title: string
@@ -74,6 +84,9 @@ interface PostRow {
   content: string
   status: 'draft' | 'published'
   hidden_at: string | null
+  series_id: string | null
+  series_order: number | null
+  series?: SeriesRow | null
   created_at: string
   updated_at: string
 }
@@ -96,7 +109,8 @@ const PROFILE = 'id, display_name, avatar_url, avatar_path'
 const AUTHOR = `author:profiles!posts_author_profile_fkey(${PROFILE})`
 const STATS = 'stats:post_stats(view_count, like_count)'
 const SUMMARY = `id, title, slug, excerpt, cover_image_path, published_at, hidden_at, author_id, category:categories(${TERM}), post_tags(tag:tags(${TERM})), ${AUTHOR}, ${STATS}`
-const DETAIL = `${SUMMARY}, content`
+const SERIES = 'id, title, slug, description, author_id'
+const DETAIL = `${SUMMARY}, content, series_id, series_order, series:series(${SERIES})`
 const ADMIN_POST = `${DETAIL}, status, created_at, updated_at, comments(count)`
 // `post` is an inner join so authors can filter the moderation queue to their own posts.
 const ADMIN_COMMENT =
@@ -134,8 +148,23 @@ function toSummary(row: PostRow): PostSummary {
   }
 }
 
-function toDetail(row: PostRow): PostDetail {
-  return { ...toSummary(row), content: row.content, hiddenAt: row.hidden_at }
+function toSeries(row: SeriesRow): Series {
+  return {
+    id: row.id,
+    title: row.title,
+    slug: row.slug,
+    description: row.description,
+    authorId: row.author_id,
+  }
+}
+
+function toDetail(row: PostRow, parts: PostSeries['parts'] = []): PostDetail {
+  return {
+    ...toSummary(row),
+    content: row.content,
+    hiddenAt: row.hidden_at,
+    series: row.series ? { ...toSeries(row.series), order: row.series_order, parts } : null,
+  }
 }
 
 function toAdminPost(row: PostRow): AdminPost {
@@ -147,6 +176,8 @@ function toAdminPost(row: PostRow): AdminPost {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     hiddenAt: row.hidden_at,
+    seriesId: row.series_id,
+    seriesOrder: row.series_order,
     comments: Number(row.comments?.[0]?.count ?? 0),
   }
 }
@@ -291,6 +322,7 @@ export const publicApi = {
     tag,
     author,
     following,
+    series,
     q,
   }: {
     page?: number
@@ -300,6 +332,8 @@ export const publicApi = {
     author?: string
     /** Only posts of authors the signed-in user follows (D43). */
     following?: boolean
+    /** Series id: its parts in order (D47). */
+    series?: string
     q?: string
   }): Promise<Page<PostSummary>> {
     const empty: Page<PostSummary> = { items: [], total: 0, page, limit: PAGE_SIZE }
@@ -336,6 +370,7 @@ export const publicApi = {
       )
     }
     if (author) query = query.eq('author_id', author)
+    if (series) query = query.eq('series_id', series)
     if (following) {
       const ids = await publicApi.followedAuthorIds()
       if (ids.length === 0) return empty
@@ -344,7 +379,12 @@ export const publicApi = {
     // Title, excerpt and content, ignoring case and accents (D40).
     if (q?.trim()) query = query.ilike('search_text', `%${escapeLike(foldVi(q.trim()))}%`)
 
-    const result = await query.order('published_at', { ascending: false }).range(...range(page))
+    const ordered = series
+      ? query
+          .order('series_order', { ascending: true, nullsFirst: false })
+          .order('published_at', { ascending: true })
+      : query.order('published_at', { ascending: false })
+    const result = await ordered.range(...range(page))
     return toPage(result, page, toSummary)
   },
 
@@ -390,7 +430,32 @@ export const publicApi = {
         // may preview them; a client-side clock check would 404 a post published a moment ago.
         .maybeSingle(),
     ) as PostRow | null
-    return row ? toDetail(row) : notFound()
+    if (!row) return notFound()
+    // The other parts of the series, in order; RLS leaves out drafts and hidden posts.
+    const parts = row.series_id
+      ? (unwrap(
+          await supabase
+            .from('posts')
+            .select('title, slug, series_order')
+            .eq('series_id', row.series_id)
+            .eq('status', 'published')
+            .is('hidden_at', null)
+            .order('series_order', { ascending: true, nullsFirst: false })
+            .order('published_at', { ascending: true }),
+        ) as { title: string; slug: string; series_order: number | null }[])
+      : []
+    return toDetail(
+      row,
+      parts.map((part) => ({ title: part.title, slug: part.slug, order: part.series_order })),
+    )
+  },
+
+  /** A series by slug, for /series/:slug (D47). */
+  async series(slug: string): Promise<Series | null> {
+    const row = unwrap(
+      await supabase.from('series').select(SERIES).eq('slug', slug).maybeSingle(),
+    ) as SeriesRow | null
+    return row ? toSeries(row) : null
   },
 
   /** Up to three newer posts sharing the category or a tag, newest first. */
@@ -590,6 +655,12 @@ function toPostRow(body: PostInput) {
     cover_image_path: body.coverImagePath ?? null,
     status: body.status === 'PUBLISHED' ? 'published' : 'draft',
     category_id: body.categoryId,
+    ...(body.seriesId !== undefined
+      ? {
+          series_id: body.seriesId,
+          series_order: body.seriesId ? (body.seriesOrder ?? null) : null,
+        }
+      : {}),
     // null lets the database stamp the publish time; omitted keeps the stored one.
     ...(body.publishedAt !== undefined ? { published_at: body.publishedAt } : {}),
     // An omitted slug keeps the stored one; on insert the database generates it from the title.
@@ -768,6 +839,22 @@ export const adminApi = {
 
   async removeBannedWord(word: string): Promise<void> {
     unwrap(await supabase.from('banned_words').delete().eq('word', word))
+  },
+
+  /** The caller's own series (D47). */
+  async mySeries(): Promise<Series[]> {
+    const id = await currentUserId()
+    const rows = unwrap(
+      await supabase.from('series').select(SERIES).eq('author_id', id).order('title'),
+    ) as SeriesRow[]
+    return rows.map(toSeries)
+  },
+
+  async createSeries(title: string): Promise<Series> {
+    const row = unwrap(
+      await supabase.from('series').insert({ title: title.trim() }).select(SERIES).single(),
+    ) as SeriesRow
+    return toSeries(row)
   },
 
   async deleteComment(id: string): Promise<void> {
