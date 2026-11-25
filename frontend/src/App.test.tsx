@@ -61,7 +61,11 @@ const summary: PostSummary = {
   views: 12,
   likes: 3,
 }
-const post: PostDetail = { ...summary, content: '## Mở đầu\n\nXin chào\n\n## Kết luận\n\nHết' }
+const post: PostDetail = {
+  ...summary,
+  content: '## Mở đầu\n\nXin chào\n\n## Kết luận\n\nHết',
+  hiddenAt: null,
+}
 const comment: Comment = {
   id: 'c1',
   parentId: null,
@@ -187,6 +191,18 @@ describe('App', () => {
       'aria-pressed',
       'true',
     )
+  })
+
+  it('tells the author when an admin hid the post', async () => {
+    api.currentUser.mockResolvedValue(member())
+    api.post.mockResolvedValue({ ...post, hiddenAt: '2026-11-25T03:00:00.000Z' })
+    api.comments.mockResolvedValue([])
+    api.related.mockResolvedValue([])
+    api.recordView.mockResolvedValue(undefined)
+    api.liked.mockResolvedValue(false)
+    api.bookmarked.mockResolvedValue(false)
+    renderWithProviders(<App />, { route: '/posts/hello-world' })
+    expect(await screen.findByText(/đã bị ẩn bởi quản trị viên/)).toBeInTheDocument()
   })
 
   it('shows the 404 page for an unknown post', async () => {

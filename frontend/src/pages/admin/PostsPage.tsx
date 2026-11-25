@@ -27,12 +27,14 @@ export function PostsPage() {
     enabled: Boolean(user),
     placeholderData: keepPreviousData,
   })
-  const remove = useMutation({
-    mutationFn: adminApi.deletePost,
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ['admin-posts'] })
-      void queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
-    },
+  const refresh = () => {
+    void queryClient.invalidateQueries({ queryKey: ['admin-posts'] })
+    void queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] })
+  }
+  const remove = useMutation({ mutationFn: adminApi.deletePost, onSuccess: refresh })
+  const setHidden = useMutation({
+    mutationFn: ({ id, hidden }: { id: string; hidden: boolean }) => adminApi.setHidden(id, hidden),
+    onSuccess: refresh,
   })
 
   function setParam(key: string, value: string) {
@@ -132,10 +134,16 @@ export function PostsPage() {
                     )}
                   </p>
                 </div>
-                <StatusBadge
-                  published={post.status === 'PUBLISHED'}
-                  publishedAt={post.publishedAt}
-                />
+                {post.hiddenAt ? (
+                  <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-bold text-amber-900 dark:bg-amber-950 dark:text-amber-200">
+                    Đã ẩn
+                  </span>
+                ) : (
+                  <StatusBadge
+                    published={post.status === 'PUBLISHED'}
+                    publishedAt={post.publishedAt}
+                  />
+                )}
                 <div className="flex gap-3 text-sm font-semibold">
                   {isLive(post) && (
                     <Link to={`/posts/${post.slug}`} className="text-muted hover:text-primary">
@@ -146,6 +154,14 @@ export function PostsPage() {
                     <Link to={`/write/${post.id}`} className="text-primary hover:underline">
                       Sửa
                     </Link>
+                  )}
+                  {user?.isAdmin && post.status === 'PUBLISHED' && (
+                    <button
+                      className="text-amber-700 hover:underline"
+                      onClick={() => setHidden.mutate({ id: post.id, hidden: !post.hiddenAt })}
+                    >
+                      {post.hiddenAt ? 'Hiện lại' : 'Ẩn'}
+                    </button>
                   )}
                   <button
                     className="text-red-600 hover:underline"

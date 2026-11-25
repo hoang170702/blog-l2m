@@ -44,7 +44,12 @@ export function ReportsPage() {
           await adminApi.moderateComment(report.comment.id, 'REJECTED')
           await adminApi.setReportStatus(report.id, 'RESOLVED')
         } else await adminApi.deleteComment(report.comment.id)
-      } else if (report.post) await adminApi.deletePost(report.post.id)
+      } else if (report.post) {
+        if (action === 'hide') {
+          await adminApi.setHidden(report.post.id, true)
+          await adminApi.setReportStatus(report.id, 'RESOLVED')
+        } else await adminApi.deletePost(report.post.id)
+      }
     },
     onSuccess: refresh,
   })
@@ -120,6 +125,14 @@ export function ReportsPage() {
                       onClick={() => act.mutate({ report, action: 'hide' })}
                     >
                       Ẩn bình luận
+                    </button>
+                  )}
+                  {report.post && (
+                    <button
+                      className="text-amber-700 hover:underline"
+                      onClick={() => act.mutate({ report, action: 'hide' })}
+                    >
+                      Ẩn bài viết
                     </button>
                   )}
                   <button

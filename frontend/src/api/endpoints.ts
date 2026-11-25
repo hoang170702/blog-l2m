@@ -71,6 +71,7 @@ interface PostRow {
   author_id: string | null
   content: string
   status: 'draft' | 'published'
+  hidden_at: string | null
   created_at: string
   updated_at: string
 }
@@ -90,7 +91,7 @@ const TERM = 'id, name, slug'
 const PROFILE = 'id, display_name, avatar_url, avatar_path'
 const AUTHOR = `author:profiles!posts_author_profile_fkey(${PROFILE})`
 const STATS = 'stats:post_stats(view_count, like_count)'
-const SUMMARY = `id, title, slug, excerpt, cover_image_path, published_at, author_id, category:categories(${TERM}), post_tags(tag:tags(${TERM})), ${AUTHOR}, ${STATS}`
+const SUMMARY = `id, title, slug, excerpt, cover_image_path, published_at, hidden_at, author_id, category:categories(${TERM}), post_tags(tag:tags(${TERM})), ${AUTHOR}, ${STATS}`
 const DETAIL = `${SUMMARY}, content`
 const ADMIN_POST = `${DETAIL}, status, created_at, updated_at, comments(count)`
 // `post` is an inner join so authors can filter the moderation queue to their own posts.
@@ -130,7 +131,7 @@ function toSummary(row: PostRow): PostSummary {
 }
 
 function toDetail(row: PostRow): PostDetail {
-  return { ...toSummary(row), content: row.content }
+  return { ...toSummary(row), content: row.content, hiddenAt: row.hidden_at }
 }
 
 function toAdminPost(row: PostRow): AdminPost {
@@ -141,6 +142,7 @@ function toAdminPost(row: PostRow): AdminPost {
     status: row.status === 'published' ? 'PUBLISHED' : 'DRAFT',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    hiddenAt: row.hidden_at,
     comments: Number(row.comments?.[0]?.count ?? 0),
   }
 }
@@ -294,7 +296,12 @@ export const publicApi = {
     const empty: Page<PostSummary> = { items: [], total: 0, page, limit: PAGE_SIZE }
     if (author !== undefined && !UUID.test(author)) return empty
     // Signed-in users can also read their own drafts through RLS, so public pages filter on status.
-    let query = supabase.from('posts').select(SUMMARY, { count: 'exact' }).eq('status', 'published')
+    // Authors and admins can read hidden posts (D49), so public lists leave them out explicitly.
+    let query = supabase
+      .from('posts')
+      .select(SUMMARY, { count: 'exact' })
+      .eq('status', 'published')
+      .is('hidden_at', null)
     const cutoff = await scheduledCutoff()
     if (cutoff) query = query.lte('published_at', cutoff)
 
@@ -611,6 +618,11 @@ export const adminApi = {
     }
     await setPostTags(id, body.tagIds)
     return adminApi.post(id)
+  },
+
+  /** Admins only (D49): hides a post from everyone but its author and admins, or shows it again. */
+  async setHidden(id: string, hidden: boolean): Promise<void> {
+    unwrap(await supabase.rpc('admin_set_hidden', { p_post: id, p_hidden: hidden }))
   },
 
   async deletePost(id: string): Promise<void> {
