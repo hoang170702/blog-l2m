@@ -7,6 +7,7 @@ import type { PostDetail, PostSeries } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 import { Markdown } from '../components/Markdown'
 import { AuthorChip, TagList } from '../components/PostCard'
+import { ReadAloud } from '../components/ReadAloud'
 import { ReportButton } from '../components/ReportButton'
 import { ShareButtons } from '../components/ShareButtons'
 import { Avatar } from '../components/UserMenu'
@@ -123,6 +124,7 @@ export function PostPage() {
           </div>
         )}
       </header>
+      <ReadAloud title={post.title} markdown={post.content} />
       {post.coverImageUrl && (
         <img
           src={post.coverImageUrl}
