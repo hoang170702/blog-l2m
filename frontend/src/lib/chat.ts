@@ -22,8 +22,10 @@ export interface MessageEvents {
  * server). Returns an unsubscribe function.
  */
 export function subscribeMessages(client: MinimalClient, events: MessageEvents): () => void {
+  // A unique topic per subscriber: supabase-js reuses a channel with an existing topic, so two
+  // mounted components (dock + room) sharing 'messages' would tear each other down.
   const channel: RealtimeChannel = client
-    .channel('messages')
+    .channel(`messages:${crypto.randomUUID()}`)
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
       const row = payload.new as { id: string; thread_id: string | null }
       events.onInsert(row.id, row.thread_id)

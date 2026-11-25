@@ -13,8 +13,8 @@ A Vietnamese blog: Vite + React SPA on GitHub Pages, data in Supabase (Postgres 
 | `frontend/src/App.tsx` | Route tree (public, `/login`, `/write`, `/dashboard/*`, admin pages) | — |
 | `frontend/src/api/` | `client.ts` (Supabase client, `ApiError`), `endpoints.ts` (`publicApi`, `adminApi`: every query and RPC call), `types.ts` | `endpoints.ts` |
 | `frontend/src/pages/` | Pages; `admin/` holds dashboard pages; `PostPage.tsx` is the richest (likes, bookmarks, follow, series, read-aloud, reading prefs, comments) | — |
-| `frontend/src/components/` | Shared UI (`Layout`, `Brand`, `PostCard`, `Status`, `Markdown`, `ReadAloud`, `ReadingPrefs`, `ThemeToggle`, …) | `Status.tsx` for the error/loading conventions |
-| `frontend/src/lib/` | Pure helpers with unit tests (`theme`, `readingPrefs`, `speech`, `markdownText`, `fold`, `crop`, `autosave`, …) | — |
+| `frontend/src/components/` | Shared UI (`Layout`, `Brand`, `PostCard`, `Status`, `Markdown`, `ReadAloud`, `ReadingPrefs`, `ThemeToggle`, …); `chat/` holds the dock, panel, room and inbox | `Status.tsx` for the error/loading conventions |
+| `frontend/src/lib/` | Pure helpers with unit tests (`theme`, `readingPrefs`, `chat` (realtime subscription, presence, grouping), `speech`, `markdownText`, `fold`, `crop`, `autosave`, …) | — |
 | `frontend/src/index.css` | Tailwind v4 entry: fonts, **all color tokens** (`:root`, `[data-theme='dark']`), status tokens, `.btn-*`, `.card`, `.pill`, `.meta`, reader size rules | yes, before any styling |
 | `frontend/vite.config.ts` | CSP meta tag, `404.html` for SPA deep links, robots/RSS links | when touching hosting or external resources |
 | `supabase/migrations/` | Schema, RLS, RPCs, triggers, in timestamp order; each file states its purpose at the top | the latest few before adding one |
@@ -22,7 +22,7 @@ A Vietnamese blog: Vite + React SPA on GitHub Pages, data in Supabase (Postgres 
 | `supabase/functions/feed/` | RSS + sitemap Edge Function | — |
 | `scripts/` | `test-db-embedded.mjs` (PGlite + pgTAP, no Docker), admin grant/revoke SQL, `cleanup-unused-images.mjs` | — |
 | `docs/ideas.md` | Done log by date, accepted direction, backlog, known gaps | yes |
-| `plans/` | Plan bundles (workflow-record v4) for the `$plan`/`$execute` skills: `2026-11-23-no1-blog-monorepo` (everything so far, tracker `PLAN-20261123-blog-monorepo`), `2026-11-25-no1-audio`, `2026-11-25-no2-reading-prefs` | `index.md` + `evidence.md` of the monorepo bundle for history and machine notes |
+| `plans/` | Plan bundles (workflow-record v4) for the `$plan`/`$execute` skills: `2026-11-23-no1-blog-monorepo` (everything so far, tracker `PLAN-20261123-blog-monorepo`), `2026-11-25-no1-audio`, `2026-11-25-no2-reading-prefs`, `2026-11-25-no3-chat` | `index.md` + `evidence.md` of the monorepo bundle for history and machine notes |
 
 ## Workflows
 
@@ -45,6 +45,7 @@ A Vietnamese blog: Vite + React SPA on GitHub Pages, data in Supabase (Postgres 
 
 - UI copy is Vietnamese; code, comments and docs are English.
 - Public writes go through RPCs with rate limits (`submit_comment`, `report_content`, `record_post_view`); never grant table inserts to `anon`.
+- Chat: private threads are readable only by their two participants; do not add an admin clause to the `messages`/`dm_threads` select policies (decision D2 of the chat plan). Any test that renders `Layout` with a signed-in user must mock `chatApi` and `supabase.channel` (`src/test/chat.ts`).
 - Secrets never enter the repo or chat; the anon key and Supabase URL are public by design.
 - Reading preferences and theme are device-local (`localStorage`), applied in `main.tsx` before the first render.
 - Known gaps and deliberate non-fixes are listed in `docs/ideas.md` (security audit leftovers, data quirks like a `#` typed into a title).
