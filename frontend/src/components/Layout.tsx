@@ -35,6 +35,16 @@ export function Layout() {
             >
               Trang chủ
             </NavLink>
+            {user && (
+              <NavLink
+                to="/following"
+                className={({ isActive }) =>
+                  `rounded-full px-3 py-1.5 transition ${isActive ? 'bg-primary-soft text-primary-dark' : 'text-muted hover:text-ink'}`
+                }
+              >
+                Đang theo dõi
+              </NavLink>
+            )}
           </nav>
           <div className="order-2 ml-auto flex items-center gap-2 sm:order-3 sm:ml-0">
             <Link to={user ? '/write' : '/login'} className="btn-primary py-2">

@@ -10,6 +10,8 @@ export interface Author {
   avatarUrl: string | null
   /** Short self-description; only loaded for the author page and the profile. */
   bio?: string | null
+  /** Only loaded for the author page (D43). */
+  followers?: number
 }
 
 export interface PostSummary {

@@ -290,6 +290,7 @@ export const publicApi = {
     category,
     tag,
     author,
+    following,
     q,
   }: {
     page?: number
@@ -297,6 +298,8 @@ export const publicApi = {
     tag?: string
     /** Profile id: only this author's posts (D41). */
     author?: string
+    /** Only posts of authors the signed-in user follows (D43). */
+    following?: boolean
     q?: string
   }): Promise<Page<PostSummary>> {
     const empty: Page<PostSummary> = { items: [], total: 0, page, limit: PAGE_SIZE }
@@ -333,6 +336,11 @@ export const publicApi = {
       )
     }
     if (author) query = query.eq('author_id', author)
+    if (following) {
+      const ids = await publicApi.followedAuthorIds()
+      if (ids.length === 0) return empty
+      query = query.in('author_id', ids)
+    }
     // Title, excerpt and content, ignoring case and accents (D40).
     if (q?.trim()) query = query.ilike('search_text', `%${escapeLike(foldVi(q.trim()))}%`)
 
@@ -343,10 +351,32 @@ export const publicApi = {
   /** Public author card for `/u/:id`; null for an unknown or malformed id. */
   async author(id: string): Promise<Author | null> {
     if (!UUID.test(id)) return null
-    const row = unwrap(
-      await supabase.from('profiles').select(`${PROFILE}, bio`).eq('id', id).maybeSingle(),
-    ) as ProfileRow | null
-    return toAuthor(row)
+    const [row, followers] = await Promise.all([
+      supabase.from('profiles').select(`${PROFILE}, bio`).eq('id', id).maybeSingle(),
+      supabase.rpc('follower_count', { p_author: id }),
+    ])
+    const author = toAuthor(unwrap(row) as ProfileRow | null)
+    return author ? { ...author, followers: Number(unwrap(followers) ?? 0) } : null
+  },
+
+  // Follows (D43): RLS limits every query to the caller's own rows.
+  async followedAuthorIds(): Promise<string[]> {
+    const rows = unwrap(await supabase.from('follows').select('author_id')) as {
+      author_id: string
+    }[]
+    return rows.map((row) => row.author_id)
+  },
+
+  async following(authorId: string): Promise<boolean> {
+    const rows = unwrap(
+      await supabase.from('follows').select('author_id').eq('author_id', authorId),
+    ) as unknown[]
+    return rows.length > 0
+  },
+
+  async setFollowing(authorId: string, on: boolean): Promise<void> {
+    if (on) unwrap(await supabase.from('follows').insert({ author_id: authorId }))
+    else unwrap(await supabase.from('follows').delete().eq('author_id', authorId))
   },
 
   async post(slug: string): Promise<PostDetail> {

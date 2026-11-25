@@ -12,7 +12,7 @@ select is(
     where n.nspname = 'public' and p.prokind = 'f'
       and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')
       and has_function_privilege('anon', p.oid, 'execute')),
-  array['record_post_view', 'report_content', 'submit_comment'],
+  array['follower_count', 'record_post_view', 'report_content', 'submit_comment'],
   'signed-out callers can execute only the public RPCs'
 );
 select is(
@@ -21,7 +21,7 @@ select is(
       and not exists (select 1 from pg_depend d where d.objid = p.oid and d.deptype = 'e')
       and has_function_privilege('authenticated', p.oid, 'execute')),
   array['admin_block_client', 'admin_list_blocked_clients', 'admin_list_users', 'admin_set_hidden',
-        'admin_set_suspended', 'admin_unblock_client', 'comment_client', 'get_my_admin_status',
+        'admin_set_suspended', 'admin_unblock_client', 'comment_client', 'follower_count', 'get_my_admin_status',
         'get_my_suspension_status', 'record_post_view', 'report_content', 'submit_comment'],
   'signed-in callers can execute only the app RPCs'
 );
