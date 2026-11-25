@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
+import { useQuery } from '@tanstack/react-query'
 import { Link, useNavigate } from 'react-router'
+import { publicApi } from '../api/endpoints'
 import type { User } from '../api/types'
 import { useAuth } from '../auth/AuthContext'
 
@@ -33,6 +35,13 @@ export function UserMenu() {
   const navigate = useNavigate()
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  // Unread count (D44), refreshed every minute while signed in.
+  const unread = useQuery({
+    queryKey: ['unread-notifications', user?.id],
+    queryFn: publicApi.unreadNotifications,
+    enabled: Boolean(user),
+    refetchInterval: 60_000,
+  })
 
   useEffect(() => {
     if (!open) return
@@ -71,10 +80,18 @@ export function UserMenu() {
         onClick={() => setOpen((value) => !value)}
         aria-haspopup="menu"
         aria-expanded={open}
-        aria-label="Tài khoản"
-        className="flex items-center gap-2 rounded-full transition hover:opacity-90"
+        aria-label={unread.data ? `Tài khoản, ${unread.data} thông báo mới` : 'Tài khoản'}
+        className="relative flex items-center gap-2 rounded-full transition hover:opacity-90"
       >
         <Avatar user={user} />
+        {unread.data ? (
+          <span
+            data-testid="unread-dot"
+            className="absolute -top-0.5 -right-0.5 grid h-4 min-w-4 place-items-center rounded-full bg-primary px-1 text-[10px] font-bold text-white ring-2 ring-canvas"
+          >
+            {unread.data > 9 ? '9+' : unread.data}
+          </span>
+        ) : null}
       </button>
       {open && (
         <div role="menu" className="card absolute right-0 z-30 mt-2 w-60 p-2 shadow-glow">
@@ -96,6 +113,9 @@ export function UserMenu() {
             </Link>
             <Link role="menuitem" to="/write" className={item}>
               Viết bài mới
+            </Link>
+            <Link role="menuitem" to="/dashboard/notifications" className={item}>
+              Thông báo{unread.data ? ` (${unread.data})` : ''}
             </Link>
             <Link role="menuitem" to="/dashboard/saved" className={item}>
               Bài đã lưu

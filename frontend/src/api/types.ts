@@ -180,6 +180,18 @@ export interface Report {
   } | null
 }
 
+export type NotificationKind = 'comment' | 'like' | 'new_post'
+
+/** In-app notification for the signed-in user (D44). */
+export interface Notification {
+  id: string
+  kind: NotificationKind
+  actorName: string
+  post: { title: string; slug: string } | null
+  createdAt: string
+  readAt: string | null
+}
+
 export interface Member extends Author {
   email: string
   createdAt: string

@@ -17,6 +17,8 @@ import type {
   CommentStatus,
   DashboardStats,
   Member,
+  Notification,
+  NotificationKind,
   OAuthProvider,
   Page,
   PostDetail,
@@ -397,6 +399,45 @@ export const publicApi = {
     ])
     const author = toAuthor(unwrap(row) as ProfileRow | null)
     return author ? { ...author, followers: Number(unwrap(followers) ?? 0) } : null
+  },
+
+  // Notifications (D44): RLS limits every query to the caller's own rows.
+  async unreadNotifications(): Promise<number> {
+    return count(
+      supabase
+        .from('notifications')
+        .select('id', { count: 'exact', head: true })
+        .is('read_at', null),
+    )
+  },
+
+  async notifications(): Promise<Notification[]> {
+    const rows = unwrap(
+      await supabase
+        .from('notifications')
+        .select('id, kind, actor_name, created_at, read_at, post:posts(title, slug)')
+        .order('created_at', { ascending: false })
+        .limit(50),
+    ) as unknown as {
+      id: string
+      kind: NotificationKind
+      actor_name: string
+      created_at: string
+      read_at: string | null
+      post: { title: string; slug: string } | null
+    }[]
+    return rows.map((row) => ({
+      id: row.id,
+      kind: row.kind,
+      actorName: row.actor_name,
+      post: row.post,
+      createdAt: row.created_at,
+      readAt: row.read_at,
+    }))
+  },
+
+  async markNotificationsRead(): Promise<void> {
+    unwrap(await supabase.rpc('mark_notifications_read'))
   },
 
   // Follows (D43): RLS limits every query to the caller's own rows.

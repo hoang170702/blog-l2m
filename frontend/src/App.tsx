@@ -38,6 +38,9 @@ const MembersPage = lazy(() =>
 const ProfilePage = lazy(() =>
   import('./pages/admin/ProfilePage').then((m) => ({ default: m.ProfilePage })),
 )
+const NotificationsPage = lazy(() =>
+  import('./pages/admin/NotificationsPage').then((m) => ({ default: m.NotificationsPage })),
+)
 const SavedPage = lazy(() =>
   import('./pages/admin/SavedPage').then((m) => ({ default: m.SavedPage })),
 )
@@ -89,6 +92,7 @@ export const routes: RouteObject[] = [
           { path: 'comments', element: page(<CommentsPage />) },
           { path: 'profile', element: page(<ProfilePage />) },
           { path: 'saved', element: page(<SavedPage />) },
+          { path: 'notifications', element: page(<NotificationsPage />) },
           {
             element: (
               <RequireAuth admin>
