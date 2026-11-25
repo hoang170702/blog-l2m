@@ -19,7 +19,8 @@ function staticHosting(supabaseUrl: string): Plugin {
     "script-src 'self'",
     "style-src 'self' 'unsafe-inline'",
     `img-src 'self' data: blob: https: ${supabaseUrl}`,
-    `connect-src 'self' ${supabaseUrl}`,
+    // Realtime uses wss://; Safari does not let an https:// source cover WebSockets.
+    `connect-src 'self' ${supabaseUrl} ${supabaseUrl.replace(/^http/, 'ws')}`,
     "font-src 'self'",
     "object-src 'none'",
     "base-uri 'self'",
