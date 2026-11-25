@@ -1,43 +1,55 @@
-# Blog — Agent Guide
+# L2M Blog — Agent Guide
 
-`CLAUDE.md` only imports this file; edit `AGENTS.md`. Versions live in `*/package.json`, lockfiles, Dockerfiles and compose files, not here.
+`CLAUDE.md` only imports this file; edit `AGENTS.md`. Versions live in `*/package.json` and lockfiles, not here. `README.md` is the operator manual (features, deployment, usage); this file is the map for an agent.
 
-## Project Map
+## What this is
+
+A Vietnamese blog: Vite + React SPA on GitHub Pages, data in Supabase (Postgres with row-level security, Auth with Google/GitHub, Storage for covers and avatars, one Edge Function for RSS/sitemap). There is no application server: the browser talks to PostgREST directly, and every rule lives in SQL (RLS policies, `security definer` RPCs, triggers). The earlier NestJS/VPS stack is gone; `deploy/`, `docker-compose.yml`, `frontend/Dockerfile`, `frontend/nginx/`, `.gitlab-ci.yml`, `docs/api.md`, `docs/deploy.md`, `docs/security.md` are leftovers from it and are not used.
+
+## Project map
 
 | Path | What | Read first |
 | --- | --- | --- |
-| `backend/` | NestJS REST API (`/api`), Prisma, Redis | `backend/AGENTS.md`, `backend/src/app.module.ts`, `backend/prisma/schema.prisma` |
-| `frontend/` | Vite + React SPA, served by Nginx in its image | `frontend/src/App.tsx`, `frontend/src/api/` |
-| `frontend/nginx/default.conf` | Serves the SPA, proxies `/api/` to `backend:3000`, serves `/uploads/` | — |
-| `docker-compose.yml` | Local stack (postgres, redis, migrate, backend, web on :8080) | — |
-| `deploy/docker-compose.yml` | One server environment (`blog-uat` / `blog-prod`), Traefik labels | `docs/deploy.md` |
-| `deploy/edge/` | Shared Traefik + Let's Encrypt + read-only Docker socket proxy | `docs/deploy.md` |
-| `deploy/scripts/` | `deploy.sh` (runs on the server), `setup-server.sh`, `set-gitlab-vars.sh` | script headers |
-| `.gitlab-ci.yml` | Only `include:`s the pipeline from the `NguyenHuyHoang170702/cicd-templates` project at a pinned tag | `docs/git-flow.md` |
-| `docs/` | API contract, git flow, deployment, security | — |
+| `frontend/src/App.tsx` | Route tree (public, `/login`, `/write`, `/dashboard/*`, admin pages) | — |
+| `frontend/src/api/` | `client.ts` (Supabase client, `ApiError`), `endpoints.ts` (`publicApi`, `adminApi`: every query and RPC call), `types.ts` | `endpoints.ts` |
+| `frontend/src/pages/` | Pages; `admin/` holds dashboard pages; `PostPage.tsx` is the richest (likes, bookmarks, follow, series, read-aloud, reading prefs, comments) | — |
+| `frontend/src/components/` | Shared UI (`Layout`, `Brand`, `PostCard`, `Status`, `Markdown`, `ReadAloud`, `ReadingPrefs`, `ThemeToggle`, …) | `Status.tsx` for the error/loading conventions |
+| `frontend/src/lib/` | Pure helpers with unit tests (`theme`, `readingPrefs`, `speech`, `markdownText`, `fold`, `crop`, `autosave`, …) | — |
+| `frontend/src/index.css` | Tailwind v4 entry: fonts, **all color tokens** (`:root`, `[data-theme='dark']`), status tokens, `.btn-*`, `.card`, `.pill`, `.meta`, reader size rules | yes, before any styling |
+| `frontend/vite.config.ts` | CSP meta tag, `404.html` for SPA deep links, robots/RSS links | when touching hosting or external resources |
+| `supabase/migrations/` | Schema, RLS, RPCs, triggers, in timestamp order; each file states its purpose at the top | the latest few before adding one |
+| `supabase/tests/database/` | pgTAP suites, one per area; `functions_test.sql` holds the RPC allowlist | the suite of the area you change |
+| `supabase/functions/feed/` | RSS + sitemap Edge Function | — |
+| `scripts/` | `test-db-embedded.mjs` (PGlite + pgTAP, no Docker), admin grant/revoke SQL, `cleanup-unused-images.mjs` | — |
+| `docs/ideas.md` | Done log by date, accepted direction, backlog, known gaps | yes |
+| `plans/` | Plan bundles (workflow-record v4) for the `$plan`/`$execute` skills: `2026-11-23-no1-blog-monorepo` (everything so far, tracker `PLAN-20261123-blog-monorepo`), `2026-11-25-no1-audio`, `2026-11-25-no2-reading-prefs` | `index.md` + `evidence.md` of the monorepo bundle for history and machine notes |
 
-`backend/src/generated/` (Prisma client) and `*/dist/` are generated: do not edit.
+## Workflows
 
-## Common Workflows
+- Checks (CI runs the same): `frontend/`: `npm run lint && npm run typecheck && npm test && npm run build`; repository root: `npm run db:test:embedded` (pgTAP in PGlite, no Docker) or `npm run db:test` (needs `npx supabase start`).
+- Local stack: `npx supabase start && npx supabase db reset`, then `frontend/.env.local` from `.env.example` with the anon key of `npx supabase status`, `npm run dev`. Seed admin `admin@example.com` / `local-dev-admin-password`.
+- Branching: one `feature/*` or `fix/*` branch per change, merged `--no-ff` into `main`, full check set after the merge. `main` on gitea.com (`hoang170702/blog-l2m`) is where work lands; GitHub Pages builds only from GitHub `main`, so pushing GitHub too is part of a release.
+- Release = `npx supabase db push --remote` (migrations first, always) → push `main` to GitHub → Pages workflow. A frontend that queries a column the production database does not have yet shows the error box instead of posts.
+- Commits: Conventional Commits, author `hoangkktt <huyhoang11202@gmail.com>` set per command. Never commit without the user's explicit approval in the conversation (see the global rules).
 
-- Whole stack: `cp .env.example .env && docker compose up -d --build` → http://localhost:8080 (`/admin`).
-- Data services only for native dev: `docker compose up -d postgres redis`.
-- Per app (`backend/`, `frontend/`): `npm run lint`, `npm run typecheck`, `npm test`, `npm run build`; backend also `npm run test:e2e` (needs local Postgres + Redis; it truncates all tables).
-- CI runs exactly these scripts plus gitleaks; keep script names stable (the shared template calls them).
+## Task routing
 
-## Task Routing
+- Schema or rule change: new file via `npx supabase migration new <name>`; add or extend the matching pgTAP suite and bump its `plan(n)`; new tables `revoke all … from anon, authenticated` then grant exactly what is needed (projects have "auto-expose" off); new RPCs: `revoke execute … from public` then grant, add to the allowlist in `functions_test.sql`; `security definer` functions set `search_path = ''`.
+- New page or feature: `endpoints.ts` + `types.ts` together with the migration; pages read through `useQuery` and show `<Spinner />`, `<ErrorMessage error onRetry={refetch} />`, `<Empty>`.
+- Styling: tokens only (`primary`, `secondary`, `canvas`, `surface`, `ink`, `muted`, `line`, `danger`, `warning`, `success`, `on-primary`, `*-soft`). No Tailwind palette classes (`red-600`, `amber-50`): they break the dark theme. Text on a primary-colored surface is `text-on-primary`. Meta rows use the `.meta` class for the `·` separators.
+- Fonts: self-hosted through `@fontsource` (CSP `font-src 'self'`), Vietnamese subset required; adding a reader font = package + `@import` + `[data-font]` block in `index.css` + row in `lib/readingPrefs.ts`.
+- Dependencies: `npx npm@11 install <pkg>` inside `frontend/` (npm 10 fails on this lockfile). `npm audit --audit-level=high` must stay clean; two moderate build-time findings in `@tailwindcss/typography` are accepted.
+- Docs after a change: `README.md` (features/usage), `frontend/README.md` (frontend internals), `docs/ideas.md` (Done entry + follow-ups), and the plan bundle (`evidence.md` action, `index.md` snapshot/checkpoint).
 
-- API change: update `docs/api.md` and `frontend/src/api/types.ts` + `frontend/src/api/endpoints.ts` together with the backend DTOs.
-- Schema change: `npx prisma migrate dev --name <name>` in `backend/`; never run migrations at app start (`deploy.sh` runs `prisma migrate deploy` before replacing containers).
-- New server env var: add it to `deploy/docker-compose.yml`, `deploy/.env.example`, the `env_required`/`env_optional` input in `.gitlab-ci.yml` if the default list lacks it, and `docs/deploy.md`.
-- Pipeline change: edit the `cicd-templates` project, tag a new version, then bump `ref` in `.gitlab-ci.yml`. Never move an existing tag.
+## Conventions and guardrails
 
-## Conventions And Guardrails
+- UI copy is Vietnamese; code, comments and docs are English.
+- Public writes go through RPCs with rate limits (`submit_comment`, `report_content`, `record_post_view`); never grant table inserts to `anon`.
+- Secrets never enter the repo or chat; the anon key and Supabase URL are public by design.
+- Reading preferences and theme are device-local (`localStorage`), applied in `main.tsx` before the first render.
+- Known gaps and deliberate non-fixes are listed in `docs/ideas.md` (security audit leftovers, data quirks like a `#` typed into a title).
 
-- Git flow: branch `feature/*` from `master` → MR into `uat` (auto-deploys UAT) → MR `uat` → `prod` (manual deploy) → MR `prod` → `master`. `master`/`uat`/`prod` are protected; never push to them directly.
-- Secrets: only `*.example` files are committed; real values are protected, environment-scoped GitLab CI/CD variables. gitleaks blocks commits and pipelines. `VITE_*` values are public.
-- Adding or updating npm dependencies needs npm 11 (`npx npm@11 install <pkg>`); npm 10 fails with `Cannot read properties of null (reading 'edgesOut')`. `npm ci` works with either.
-- The frontend build needs a glibc image (`node:*-slim`): the native TypeScript compiler has no musl binary.
-- The `uploads` volume is shared by `backend` (writes, uid 1000) and `web` (read-only); keep the mount point in `frontend/Dockerfile` owned by uid 1000.
-- Supabase runtime `DATABASE_URL` needs `uselibpqcompat=true&sslmode=require` (node-postgres otherwise verifies against public CAs and fails); `DIRECT_URL` (Prisma CLI) uses plain `sslmode=require`.
-- Server `.env` values are single-quoted by the deploy job; values must not contain `'` or newlines.
+## Reviews done so far (how to repeat them)
+
+- Security: the `security-audit` skill over the repository (2026-11-25); fixes in migration `20261125160000_notification_limits.sql` and `lib/markdownText.ts`; leftovers in `docs/ideas.md` → Community safety.
+- UI/UX: the evondev `ui-ux` skill (`github.com/evondev/evondevKit`, installed under `~/.kiro/skills/ui-ux` on machine B via `~/skill/agent-skills`). Its probe (`scripts/probe.mjs`, Playwright) was run against the live site and a local build of `main` (`npx vite build --outDir /tmp/evon-site` with the production `VITE_SUPABASE_*`, served by a tiny SPA static server). Behind a TLS-intercepting proxy, wrap Playwright so contexts use `ignoreHTTPSErrors`. Findings and fixes: `docs/ideas.md` 2026-11-25 entry and plan action A040.

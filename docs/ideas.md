@@ -62,7 +62,8 @@ Scope: one migration, `submit_comment`, frontend, tests. No backfill: comments h
 
 ## Housekeeping
 
-- `README.md` and `AGENTS.md` still describe NestJS, Redis and the VPS deploy, although commit `c1eca3c` removed the backend in favour of Supabase + GitLab Pages.
+- `deploy/`, `docker-compose.yml`, `frontend/Dockerfile`, `frontend/nginx/`, `.gitlab-ci.yml`, `docs/api.md`, `docs/deploy.md`, `docs/security.md` still describe the removed NestJS/VPS stack (`README.md` and `AGENTS.md` were rewritten for Supabase). Delete or rewrite them.
+- Release steps pending on machine A (2026-11-25): `npx supabase db push --remote` (production lacks migrations `20261125100000`–`20261125160000`; the current frontend shows the error box without them) and a GitHub remote + push of `main` (GitHub Pages still serves the bundle from before 2026-11-25).
 
 ## Suggested order
 

@@ -203,6 +203,6 @@ Files that no post cover (drafts included) or profile avatar uses are deleted, b
 
 ## Status
 
-- The app runs fully on Supabase; the NestJS backend was removed. The VPS/Docker files (`deploy/`, `docker-compose.yml`, `frontend/Dockerfile`, `frontend/nginx/`) and `docs/api.md`, `docs/deploy.md`, `docs/security.md` and `AGENTS.md` still describe that earlier stack and are due for removal or rewrite.
+- The app runs fully on Supabase; the NestJS backend was removed. The VPS/Docker files (`deploy/`, `docker-compose.yml`, `frontend/Dockerfile`, `frontend/nginx/`) and `docs/api.md`, `docs/deploy.md`, `docs/security.md` still describe that earlier stack and are due for removal or rewrite (`AGENTS.md` is current).
 - GitHub Pages deploys the frontend only; database migrations and the feed function are applied by hand (Deployment, step 1). `.gitlab-ci.yml` still includes the earlier GitLab fullstack pipeline template.
 - Unused images are cleaned up by hand (Maintenance); a scheduled job is not set up. More ideas are in `docs/ideas.md`.
