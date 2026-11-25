@@ -14,7 +14,8 @@ const api = vi.hoisted(() => ({
   currentUser: vi.fn(),
 }))
 
-vi.mock('../api/endpoints', () => ({
+vi.mock('../api/endpoints', async () => ({
+  chatApi: (await import('../test/chat')).chatApiMock,
   publicApi: {
     posts: api.posts,
     author: api.author,
@@ -23,8 +24,9 @@ vi.mock('../api/endpoints', () => ({
   },
   authApi: { currentUser: api.currentUser },
 }))
-vi.mock('../lib/supabase', () => ({
+vi.mock('../lib/supabase', async () => ({
   supabase: {
+    ...(await import('../test/chat')).realtimeMock,
     auth: {
       onAuthStateChange: (callback: (event: string) => void) => {
         setTimeout(() => callback('INITIAL_SESSION'), 0)

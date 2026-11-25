@@ -19,7 +19,8 @@ interface SupabaseLikeError {
 const knownErrors: Record<string, [number, string]> = {
   P0429: [429, 'Bạn thao tác quá nhanh, vui lòng thử lại sau ít phút.'],
   P0002: [404, 'Không tìm thấy bài viết.'],
-  P0403: [403, 'Địa chỉ của bạn đã bị chặn bình luận.'],
+  P0403: [403, 'Bạn đã bị chặn: không thể bình luận hoặc nhắn tin ở đây.'],
+  P0404: [404, 'Không tìm thấy thành viên.'],
   '23505': [409, 'Tên hoặc slug đã tồn tại.'],
   '23514': [400, 'Dữ liệu không hợp lệ.'],
   '42501': [403, 'Bạn không có quyền thực hiện thao tác này.'],
