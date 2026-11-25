@@ -4,7 +4,11 @@ import { createRoot } from 'react-dom/client'
 import { createBrowserRouter, RouterProvider } from 'react-router'
 import { routes } from './App'
 import { AuthProvider } from './auth/AuthContext'
+import { applyTheme, getTheme } from './lib/theme'
 import './index.css'
+
+// Before the first paint, so the page does not flash light.
+applyTheme(getTheme())
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { staleTime: 30_000, retry: 1 } },

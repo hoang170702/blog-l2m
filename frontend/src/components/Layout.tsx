@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useNavigate } from 'react-router'
 import { useAuth } from '../auth/AuthContext'
 import { RSS_URL } from '../lib/supabase'
 import { Brand } from './Brand'
+import { ThemeToggle } from './ThemeToggle'
 import { UserMenu } from './UserMenu'
 
 const year = new Date().getFullYear()
@@ -39,6 +40,7 @@ export function Layout() {
             <Link to={user ? '/write' : '/login'} className="btn-primary py-2">
               ✍️ <span className="hidden sm:inline">Viết bài</span>
             </Link>
+            <ThemeToggle />
             <UserMenu />
           </div>
           <form
