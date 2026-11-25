@@ -38,4 +38,17 @@ describe('markdownToParagraphs', () => {
   it('returns nothing for an empty body', () => {
     expect(markdownToParagraphs('\n\n')).toEqual([])
   })
+
+  it('stays fast on unclosed tags and links (security audit, quadratic regex)', () => {
+    const inputs = [
+      '<a'.repeat(20000),
+      '[a'.repeat(20000),
+      '[a](b'.repeat(10000),
+      '![a'.repeat(20000),
+    ]
+    const started = performance.now()
+    for (const input of inputs) markdownToParagraphs(input)
+    // Before the fix a single 40 kB input took about one second.
+    expect(performance.now() - started).toBeLessThan(250)
+  })
 })
