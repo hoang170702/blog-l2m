@@ -1,7 +1,7 @@
 -- In-app notifications (D44).
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(11);
+select plan(13);
 
 delete from public.comments; delete from public.post_tags; delete from public.posts;
 
@@ -40,16 +40,37 @@ reset role;
 select is((select count(*) from public.notifications where kind = 'like'), 1::bigint, 'one like notification');
 select is((select actor_name from public.notifications where kind = 'like'), 'reader', 'the liker is named');
 
+-- Unlike + like again does not add a second notification (security audit: flooding)
+select pg_temp.as_user('33333333-3333-4333-8333-333333333333');
+delete from public.post_likes where post_id = 'aaaaaaaa-1111-4111-8111-111111111111';
+insert into public.post_likes (post_id) values ('aaaaaaaa-1111-4111-8111-111111111111');
+reset role;
+select is((select count(*) from public.notifications where kind = 'like'), 1::bigint,
+  'liking again after an unlike adds no notification');
+
 -- Publishing notifies followers (draft -> published), not an edit of a published post
 select pg_temp.as_user('22222222-2222-4222-8222-222222222222');
 insert into public.posts (id, title, content, status) values
   ('aaaaaaaa-2222-4222-8222-222222222222', 'Draft', 'x', 'draft');
 update public.posts set status = 'published' where id = 'aaaaaaaa-2222-4222-8222-222222222222';
 update public.posts set title = 'Draft edited' where id = 'aaaaaaaa-2222-4222-8222-222222222222';
+-- Flipping back to draft and publishing again does not notify again
+update public.posts set status = 'draft' where id = 'aaaaaaaa-2222-4222-8222-222222222222';
+update public.posts set status = 'published' where id = 'aaaaaaaa-2222-4222-8222-222222222222';
 reset role;
 select results_eq($$select user_id::text, post_id::text from public.notifications where kind = 'new_post'$$,
   $$values ('33333333-3333-4333-8333-333333333333', 'aaaaaaaa-2222-4222-8222-222222222222')$$,
-  'the follower is notified once when the post is published');
+  'the follower is notified once when the post is published, even after re-publishing');
+
+-- A post hidden by an admin does not notify followers when its author publishes it
+insert into public.posts (id, title, slug, content, status, author_id, hidden_at) values
+  ('aaaaaaaa-3333-4333-8333-333333333333', 'Hidden', 'hidden', 'x', 'draft',
+   '22222222-2222-4222-8222-222222222222', now());
+select pg_temp.as_user('22222222-2222-4222-8222-222222222222');
+update public.posts set status = 'published' where id = 'aaaaaaaa-3333-4333-8333-333333333333';
+reset role;
+select is((select count(*) from public.notifications where post_id = 'aaaaaaaa-3333-4333-8333-333333333333'),
+  0::bigint, 'publishing a hidden post notifies nobody');
 
 -- Privacy
 select pg_temp.as_user('44444444-4444-4444-8444-444444444444');

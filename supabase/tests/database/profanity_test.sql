@@ -1,7 +1,7 @@
 -- Profanity filter, commenter address and IP blocks (D50).
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(23);
+select plan(26);
 
 delete from public.comments; delete from public.post_tags; delete from public.posts;
 
@@ -64,6 +64,13 @@ select is((select client from public.comment_client(current_setting('test.c2')::
   'the post author reads the full address');
 select throws_ok($$select public.admin_block_client(current_setting('test.c2')::uuid, true, 'spam')$$, '42501', null,
   'the post author cannot block an address');
+select throws_ok($$update public.comments set masked = false, client_hint = null
+  where id = current_setting('test.c2')::uuid$$, '42501', null,
+  'the post author cannot clear the mask flag (security audit: update limited to status)');
+select throws_ok($$update public.comments set content = 'rewritten' where id = current_setting('test.c2')::uuid$$,
+  '42501', null, 'the post author cannot rewrite a comment');
+select lives_ok($$update public.comments set status = 'rejected' where id = current_setting('test.c2')::uuid$$,
+  'the post author still moderates the status');
 
 -- Blocking
 select pg_temp.as_user('11111111-1111-4111-8111-111111111111');

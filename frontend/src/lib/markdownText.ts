@@ -10,9 +10,11 @@ export function markdownToParagraphs(markdown: string): string[] {
   return blocks
     .map((block) =>
       block
-        .replace(/!\[[^\]]*\]\([^)]*\)/g, '')
-        .replace(/<[^>]+>/g, '')
-        .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+        // Classes exclude their own opener so an unclosed "<a<a<a…" or "[a[a[a…" cannot make
+        // each attempt rescan to the end of the block (quadratic time on reader-supplied text).
+        .replace(/!\[[^[\]]*\]\([^()]*\)/g, '')
+        .replace(/<[^<>]+>/g, '')
+        .replace(/\[([^[\]]*)\]\([^()]*\)/g, '$1')
         .replace(/^\s{0,3}#{1,6}\s+/gm, '')
         .replace(/^\s{0,3}>\s?/gm, '')
         .replace(/^\s*(?:[-*+]|\d+[.)])\s+(?:\[[ xX]\]\s+)?/gm, '')

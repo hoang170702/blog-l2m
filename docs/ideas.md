@@ -17,6 +17,7 @@ Details and commits are in `plans/2026-11-23-no1-blog-monorepo/` (decisions D34-
 - 2026-11-24: RSS feed and sitemap (Edge Function `feed`); reading time, table of contents and related posts; view counts (one per address, post and hour) and likes; one level of comment replies; local autosave in the editor; scheduled publishing; reports with an admin queue, account suspension, and rate limits on new posts (10/hour) and image uploads (30/hour); delete from the post page for the author or an admin; profile page. Migrations `20261124090000`-`20261124090200`.
 - 2026-11-25 (R4, one feature branch each, merged into `main`): dark theme (D45); share buttons (D46); comment counts and view/like totals on the dashboard (D48); bookmarks (D42); admin hide via `posts.hidden_at` (D49); profanity mask with partial IP, full IP + device for admins/author, IP blocks (D50); follows and `/following` (D43); series (D47); in-app notifications (D44). Migrations `20261125100000`-`20261125150000`. Dropped: draft preview links (idea 7), CSS default covers (idea 10).
 - 2026-11-25: "Nghe bài viết" with the browser's Web Speech API (`plans/2026-11-25-no1-audio/`, D1). No storage, no server. The user first wanted four regional voices (nam/nữ Bắc, nam/nữ Nam): only paid Vietnamese TTS (FPT.AI, Viettel, Zalo) has them and the free tiers cover about one post-voice a day, so voice choice was dropped.
+- 2026-11-25: security-audit fixes (migration `20261125160000`): one like notification per liker and post and one new-post notification per follower and post (unique index, `on conflict do nothing`), no follower notification for a post an admin hid, the API role may only update `comments.status` (authors could rewrite `content`, `masked`, `client_hint` before), and the read-aloud Markdown stripper uses bounded regexes (an unclosed `<a<a…` body of 40 kB took 5 s to convert before, 20 ms after).
 
 ## Accepted direction
 
@@ -50,6 +51,7 @@ Scope: one migration, `submit_comment`, frontend, tests. No backfill: comments h
 
 - Profanity filter matches whole words only; split or disguised spellings ("đ.m", "v c l") get through. A normalization step (strip punctuation between single letters) would catch more.
 - IP blocks are temporary by nature (mobile networks, VPNs); a block by account for signed-in commenters would be stronger once comments require sign-in.
+- Left open after the 2026-11-25 security audit (low impact, not fixed): an author can escape an admin hide by deleting and re-creating the post (a hide by author, i.e. suspension, already exists); the post author sees the full address and device of commenters by design (D50); `posts.hidden_by` is readable by the author; no retention limit on `private.comment_clients`; GitHub Actions in `.github/workflows` are pinned to major tags, not commit SHAs; the two moderate `npm audit` findings are build-time only (`postcss-selector-parser` via `@tailwindcss/typography`).
 
 ## Measurement
 
