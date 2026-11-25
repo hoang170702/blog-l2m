@@ -3,6 +3,7 @@
  * supabase/migrations); these functions only shape queries and map rows to UI types.
  */
 import type { PostgrestError } from '@supabase/supabase-js'
+import { CHAT_PAGE } from '../lib/chat'
 import { foldVi } from '../lib/fold'
 import { prepareImage, type CropRect, type ImageShape } from '../lib/image'
 import { POST_IMAGES_BUCKET, postImageUrl, supabase } from '../lib/supabase'
@@ -12,10 +13,12 @@ import type {
   AdminPost,
   Author,
   BlockedClient,
+  ChatMessage,
   CommentClient,
   Comment,
   CommentStatus,
   DashboardStats,
+  DmThread,
   Member,
   Notification,
   NotificationKind,
@@ -1020,5 +1023,130 @@ export const adminApi = {
     })
     if (error) throw new ApiError(400, `Tải ảnh thất bại: ${error.message}`)
     return { path, url: postImageUrl(path) }
+  },
+}
+
+// ---------------------------------------------------------------------------
+// Member chat (PLAN-20261125-chat): shared room (thread null) and private threads.
+// Access rules live in supabase/migrations/20261125170000_chat.sql.
+// ---------------------------------------------------------------------------
+
+const MESSAGE = `id, thread_id, user_id, content, masked, created_at, author:profiles!messages_user_id_fkey(${PROFILE})`
+
+interface MessageRow {
+  id: string
+  thread_id: string | null
+  user_id: string
+  content: string
+  masked: boolean
+  created_at: string
+  author: ProfileRow | null
+}
+
+interface InboxRow {
+  thread_id: string
+  peer_id: string
+  peer_name: string
+  peer_avatar: string | null
+  last_message_at: string | null
+  unread: number
+  blocked: boolean
+}
+
+function toMessage(row: MessageRow): ChatMessage {
+  return {
+    id: row.id,
+    threadId: row.thread_id,
+    userId: row.user_id,
+    content: row.content,
+    masked: row.masked,
+    createdAt: row.created_at,
+    author: toAuthor(row.author),
+  }
+}
+
+export const chatApi = {
+  /** Newest `CHAT_PAGE` messages of the room or a thread, oldest first; `before` pages upwards. */
+  async messages(threadId: string | null, before?: string): Promise<ChatMessage[]> {
+    let query = supabase
+      .from('messages')
+      .select(MESSAGE)
+      .order('created_at', { ascending: false })
+      .limit(CHAT_PAGE)
+    query = threadId === null ? query.is('thread_id', null) : query.eq('thread_id', threadId)
+    if (before) query = query.lt('created_at', before)
+    const rows = unwrap(await query) as unknown as MessageRow[]
+    return rows.map(toMessage).reverse()
+  },
+
+  /** One message with its author (used after a realtime insert, which carries no join). */
+  async message(id: string): Promise<ChatMessage | null> {
+    const row = unwrap(
+      await supabase.from('messages').select(MESSAGE).eq('id', id).maybeSingle(),
+    ) as unknown as MessageRow | null
+    return row ? toMessage(row) : null
+  },
+
+  async send(threadId: string | null, content: string): Promise<ChatMessage> {
+    const row = unwrap(
+      await supabase
+        .from('messages')
+        .insert({ thread_id: threadId, content })
+        .select(MESSAGE)
+        .single(),
+    ) as unknown as MessageRow
+    return toMessage(row)
+  },
+
+  async remove(id: string): Promise<void> {
+    unwrap(await supabase.from('messages').delete().eq('id', id))
+  },
+
+  async openDm(userId: string): Promise<string> {
+    return unwrap(await supabase.rpc('open_dm', { p_user: userId })) as string
+  },
+
+  async markRead(threadId: string): Promise<void> {
+    unwrap(await supabase.rpc('mark_thread_read', { p_thread: threadId }))
+  },
+
+  async inbox(): Promise<DmThread[]> {
+    const rows = unwrap(await supabase.rpc('dm_inbox')) as InboxRow[]
+    return rows.map((row) => ({
+      id: row.thread_id,
+      peer: { id: row.peer_id, name: row.peer_name, avatarUrl: row.peer_avatar },
+      lastMessageAt: row.last_message_at,
+      unread: Number(row.unread),
+      blocked: row.blocked,
+    }))
+  },
+
+  /** Members to start a thread with: name search over profiles, excluding the caller. */
+  async members(query: string, excludeId: string): Promise<Author[]> {
+    let request = supabase
+      .from('profiles')
+      .select(PROFILE)
+      .neq('id', excludeId)
+      .order('display_name')
+      .limit(20)
+    if (query.trim())
+      request = request.ilike('display_name', `%${query.trim().replace(/[%_]/g, '')}%`)
+    const rows = unwrap(await request) as unknown as ProfileRow[]
+    return rows.map((row) => toAuthor(row) as Author)
+  },
+
+  async blocks(): Promise<string[]> {
+    const rows = unwrap(await supabase.from('user_blocks').select('blocked')) as {
+      blocked: string
+    }[]
+    return rows.map((row) => row.blocked)
+  },
+
+  async block(userId: string): Promise<void> {
+    unwrap(await supabase.from('user_blocks').insert({ blocked: userId }))
+  },
+
+  async unblock(userId: string): Promise<void> {
+    unwrap(await supabase.from('user_blocks').delete().eq('blocked', userId))
   },
 }

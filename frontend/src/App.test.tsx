@@ -19,7 +19,8 @@ const api = vi.hoisted(() => ({
   deletePost: vi.fn(),
 }))
 
-vi.mock('./api/endpoints', () => ({
+vi.mock('./api/endpoints', async () => ({
+  chatApi: (await import('./test/chat')).chatApiMock,
   publicApi: {
     posts: api.posts,
     post: api.post,
@@ -34,9 +35,10 @@ vi.mock('./api/endpoints', () => ({
   adminApi: { deletePost: api.deletePost },
   authApi: { currentUser: api.currentUser },
 }))
-vi.mock('./lib/supabase', () => ({
+vi.mock('./lib/supabase', async () => ({
   RSS_URL: 'https://db.example/functions/v1/feed/rss.xml',
   supabase: {
+    ...(await import('./test/chat')).realtimeMock,
     auth: {
       // Like supabase-js: the stored session is reported once on start.
       onAuthStateChange: (callback: (event: string) => void) => {

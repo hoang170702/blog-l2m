@@ -8,6 +8,7 @@ import { NotFoundPage } from './pages/NotFoundPage'
 
 // Markdown rendering and the signed-in area are loaded on demand so the home page stays light.
 const PostPage = lazy(() => import('./pages/PostPage').then((m) => ({ default: m.PostPage })))
+const ChatPage = lazy(() => import('./pages/ChatPage').then((m) => ({ default: m.ChatPage })))
 const AuthCallbackPage = lazy(() =>
   import('./pages/AuthCallbackPage').then((m) => ({ default: m.AuthCallbackPage })),
 )
@@ -73,6 +74,8 @@ export const routes: RouteObject[] = [
       { path: 'following', element: <HomePage mode="following" /> },
       { path: 'series/:slug', element: <HomePage mode="series" /> },
       { path: 'posts/:slug', element: page(<PostPage />) },
+      { path: 'chat', element: <RequireAuth>{page(<ChatPage />)}</RequireAuth> },
+      { path: 'chat/:threadId', element: <RequireAuth>{page(<ChatPage />)}</RequireAuth> },
       { path: '*', element: <NotFoundPage /> },
     ],
   },

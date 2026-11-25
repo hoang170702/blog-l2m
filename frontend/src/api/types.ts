@@ -200,3 +200,23 @@ export interface Member extends Author {
   suspendedAt: string | null
   suspendedReason: string | null
 }
+
+/** One chat message; `threadId` null means the shared room (PLAN-20261125-chat). */
+export interface ChatMessage {
+  id: string
+  threadId: string | null
+  userId: string
+  content: string
+  masked: boolean
+  createdAt: string
+  author: Author | null
+}
+
+/** A private thread as the inbox sees it: the other member, unread count, block state. */
+export interface DmThread {
+  id: string
+  peer: Author
+  lastMessageAt: string | null
+  unread: number
+  blocked: boolean
+}

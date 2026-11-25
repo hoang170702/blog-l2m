@@ -11,13 +11,15 @@ const api = vi.hoisted(() => ({
   upload: vi.fn(),
 }))
 
-vi.mock('../../api/endpoints', () => ({
+vi.mock('../../api/endpoints', async () => ({
+  chatApi: (await import('../../test/chat')).chatApiMock,
   authApi: { currentUser: api.currentUser, updateProfile: api.updateProfile },
   adminApi: { upload: api.upload },
 }))
-vi.mock('../../lib/supabase', () => ({
+vi.mock('../../lib/supabase', async () => ({
   postImageUrl: (path: string) => `https://db.example/storage/${path}`,
   supabase: {
+    ...(await import('../../test/chat')).realtimeMock,
     auth: {
       onAuthStateChange: (callback: (event: string) => void) => {
         setTimeout(() => callback('INITIAL_SESSION'), 0)

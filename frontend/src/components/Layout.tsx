@@ -3,6 +3,7 @@ import { Link, NavLink, Outlet, useNavigate } from 'react-router'
 import { useAuth } from '../auth/AuthContext'
 import { RSS_URL } from '../lib/supabase'
 import { Brand } from './Brand'
+import { ChatDock } from './chat/ChatDock'
 import { ThemeToggle } from './ThemeToggle'
 import { UserMenu } from './UserMenu'
 
@@ -75,6 +76,7 @@ export function Layout() {
         <Outlet />
       </main>
 
+      <ChatDock />
       <footer className="border-t border-line bg-surface">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-6 text-sm text-muted sm:px-6">
           <Brand compact />
