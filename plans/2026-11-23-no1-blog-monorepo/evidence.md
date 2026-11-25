@@ -216,6 +216,22 @@
 <!-- workflow-action:A038 status:completed -->
 - A038 (completed, security audit + docs + push, per steering "làm xong test, quét security audit, push lên, merge vào main"): `npm audit --audit-level=high`: root 0; frontend 0 high, 2 moderate (`postcss-selector-parser` < 6.1.5 via `@tailwindcss/typography`, build-time only, GHSA-rj75-hqrm-r3gf; fix would downgrade typography, left as is). Secret scan over `6f99253..HEAD`: nothing. Every new `security definer` function sets `search_path = ''`; every new table revokes from anon/authenticated before granting; every new RPC is revoked from public then granted; RPC allowlists in `functions_test.sql` updated each time. Docs: README features/architecture, frontend README theme note, `docs/ideas.md` Done + follow-ups. Final checks on `main`: 190 pgTAP assertions / 11 suites, 59 vitest tests / 15 files, typecheck, lint (2 pre-existing warnings), build. `kiro-simplify` not run (time budget; listed as follow-up). Pushed `main` and the 9 `feature/*` branches to Gitea.
 
+## Day summary 2026-11-25 (machine B), for the next agent
+
+Everything below is on `main` (0b61d5e) and on Gitea; nothing is deployed yet (see Release steps in Handoff Notes).
+
+| When | What | Where to read | Commits |
+| --- | --- | --- | --- |
+| morning | R4: nine features (dark mode, share, post stats, bookmarks, hidden posts, profanity filter, follows, series, notifications), one branch each | A029–A038 above; `docs/ideas.md` 2026-11-25 R4 entry; migrations `20261125100000`–`150000` | merges 4607831…6dd5db9 |
+| 13:00 | Read aloud (Web Speech API) | `plans/2026-11-25-no1-audio/` | 1e4744c, 246d465 |
+| 14:30 | Security audit (skill) → 2 Medium + 1 Low fixed | A039; migration `20261125160000`; `docs/ideas.md` security entry + Community safety leftovers | fe07ab6 |
+| 15:30 | UI/UX review with the evondev `ui-ux` skill → 13 of 14 rows fixed (row 11 = data, skipped by the user) | A040; `docs/ideas.md` UI entry; `frontend/README.md` theme paragraph | 379fe95 |
+| 16:30 | Reading preferences (text size, font) | `plans/2026-11-25-no2-reading-prefs/`; `README.md` features; `frontend/README.md` | f1225ba |
+| 16:55 | Security audit of the afternoon diff: no findings | A041 | — |
+| 17:10 | `AGENTS.md` rewritten for the Supabase stack; release steps recorded | `AGENTS.md`, `docs/ideas.md` Housekeeping | 0b61d5e |
+
+Open for machine A: `npx supabase db push --remote`, GitHub remote + push `main`, browser smoke of all of the above, `kiro-simplify` over `6f99253..main` (never run).
+
 ## Handoff Notes
 
 ### Machines
