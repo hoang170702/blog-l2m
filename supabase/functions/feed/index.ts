@@ -30,6 +30,8 @@ async function publishedPosts(limit: number): Promise<PostRow[]> {
     select: 'title,slug,excerpt,published_at,updated_at,author:profiles!posts_author_profile_fkey(display_name)',
     status: 'eq.published',
     published_at: `lte.${new Date().toISOString()}`,
+    hidden_at: 'is.null', // RLS already excludes hidden posts for anon (D49); stated for clarity
+
     order: 'published_at.desc',
     limit: String(limit),
   })

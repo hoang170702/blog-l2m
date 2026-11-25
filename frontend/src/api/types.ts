@@ -28,6 +28,8 @@ export interface PostSummary {
 
 export interface PostDetail extends PostSummary {
   content: string
+  /** Set when an admin hid the post (D49); only its author and admins can load it then. */
+  hiddenAt: string | null
 }
 
 export type PostStatus = 'DRAFT' | 'PUBLISHED'
@@ -38,6 +40,7 @@ export interface AdminPost extends PostDetail {
   status: PostStatus
   createdAt: string
   updatedAt: string
+  hiddenAt: string | null
   /** Comments on the post, all statuses (D48). */
   comments: number
 }

@@ -59,6 +59,15 @@ export function PostPage() {
       <Link to="/" className="text-sm font-semibold text-muted transition hover:text-primary">
         ← Tất cả bài viết
       </Link>
+      {post.hiddenAt && (
+        <p
+          role="status"
+          className="mt-6 rounded-2xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200"
+        >
+          Bài này đã bị ẩn bởi quản trị viên từ {formatDate(post.hiddenAt)}. Chỉ bạn và quản trị
+          viên còn xem được.
+        </p>
+      )}
       <header className="mt-6 mb-8">
         <div className="flex flex-wrap items-center gap-2 text-sm font-semibold text-muted">
           {post.category && (
