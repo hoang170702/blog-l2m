@@ -388,7 +388,7 @@ function PostForm({
           />
 
           <div className="card overflow-hidden">
-            <div className="flex items-center border-b border-line lg:hidden">
+            <div className="flex items-center border-b border-line 2xl:hidden">
               {(['write', 'preview'] as const).map((value) => (
                 <button
                   key={value}
@@ -402,9 +402,9 @@ function PostForm({
                 </button>
               ))}
             </div>
-            <div className="grid lg:grid-cols-2">
+            <div className="grid 2xl:grid-cols-2">
               <div
-                className={`flex flex-col lg:border-r lg:border-line ${tab === 'write' ? '' : 'hidden lg:flex'}`}
+                className={`flex flex-col 2xl:border-r 2xl:border-line ${tab === 'write' ? '' : 'hidden 2xl:flex'}`}
               >
                 <MarkdownToolbar
                   textareaRef={contentRef}
@@ -454,7 +454,7 @@ function PostForm({
                 </div>
               </div>
               <div
-                className={`h-[calc(60vh+5.5rem)] min-h-96 overflow-y-auto bg-surface p-6 ${tab === 'preview' ? '' : 'hidden lg:block'}`}
+                className={`h-[calc(60vh+5.5rem)] min-h-96 overflow-y-auto bg-surface p-6 ${tab === 'preview' ? '' : 'hidden 2xl:block'}`}
                 aria-label="Xem trước"
               >
                 {post.content.trim() ? (

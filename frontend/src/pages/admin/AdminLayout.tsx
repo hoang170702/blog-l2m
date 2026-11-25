@@ -21,7 +21,7 @@ const adminLinks = [
 ] as const
 
 function navClass({ isActive }: { isActive: boolean }) {
-  return `flex items-center rounded-xl px-3 py-2 text-sm font-semibold transition ${
+  return `flex shrink-0 items-center rounded-xl px-3 py-2 text-sm font-semibold whitespace-nowrap transition ${
     isActive ? 'bg-primary-soft text-primary-dark' : 'text-muted hover:bg-surface hover:text-ink'
   }`
 }
@@ -69,7 +69,7 @@ export function AdminLayout() {
             )}
             <Link
               to="/"
-              className="flex items-center rounded-xl px-3 py-2 text-sm font-semibold text-muted transition hover:text-ink lg:mt-3"
+              className="flex shrink-0 items-center rounded-xl px-3 py-2 text-sm font-semibold whitespace-nowrap text-muted transition hover:text-ink lg:mt-3"
             >
               ← Về trang blog
             </Link>

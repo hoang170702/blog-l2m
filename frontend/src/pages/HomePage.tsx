@@ -109,8 +109,8 @@ export function HomePage({ mode = 'all' }: { mode?: Mode }) {
         </Empty>
       ) : (
         <>
-          {/* Newest first; two columns from lg so a 1280px screen shows four posts (UI review row 8). */}
-          <div className="grid gap-6 lg:grid-cols-2">
+          {/* Newest first; two columns from md (tablets) so a 1280px screen shows four posts (UI review row 8). */}
+          <div className="grid gap-6 md:grid-cols-2">
             {data.items.map((post) => (
               <PostCard key={post.id} post={post} />
             ))}

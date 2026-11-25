@@ -6,8 +6,9 @@ import { supported } from '../lib/speech'
 type Panel = 'listen' | 'prefs'
 
 /**
- * Floating rail on the right edge of a post: icon buttons that open the read-aloud and
- * reading-preference panels to their left. Panels stay mounted while closed so the speech
+ * Floating controls for a post: a pill at the bottom left on phones and tablets (the right edge
+ * would cover the text there), a vertical rail on the right edge from lg. Its icon buttons open
+ * the read-aloud and reading-preference panels. Panels stay mounted while closed so the speech
  * keeps playing.
  */
 export function ReaderDock({ title, markdown }: { title: string; markdown: string }) {
@@ -49,12 +50,15 @@ export function ReaderDock({ title, markdown }: { title: string; markdown: strin
   }
 
   return (
-    <div ref={ref} className="fixed top-1/2 right-2 z-30 -translate-y-1/2 sm:right-4">
-      <div className="card flex flex-col gap-1 rounded-full p-1.5">
+    <div
+      ref={ref}
+      className="fixed bottom-4 left-4 z-30 sm:bottom-6 sm:left-6 lg:top-1/2 lg:right-4 lg:bottom-auto lg:left-auto lg:-translate-y-1/2"
+    >
+      <div className="card flex gap-1 rounded-full p-1.5 lg:flex-col">
         {supported() && item('listen', 'Nghe bài viết', '🎧')}
         {item('prefs', 'Cỡ chữ & font', 'Aa')}
       </div>
-      <div className="absolute top-1/2 right-full mr-2 w-[min(20rem,calc(100vw-5rem))] -translate-y-1/2">
+      <div className="absolute bottom-full left-0 mb-2 w-[min(20rem,calc(100vw-2rem))] lg:top-1/2 lg:right-full lg:bottom-auto lg:left-auto lg:mr-2 lg:mb-0 lg:w-80 lg:-translate-y-1/2">
         <div hidden={open !== 'listen'}>
           <ReadAloud title={title} markdown={markdown} />
         </div>

@@ -115,7 +115,7 @@ export function PostsPage() {
                     </span>
                   )}
                 </div>
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 basis-48">
                   {post.authorId === user?.id ? (
                     <Link to={`/write/${post.id}`} className="font-bold hover:text-primary">
                       {post.title}
