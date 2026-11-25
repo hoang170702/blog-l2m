@@ -59,6 +59,24 @@ export interface Comment {
   authorName: string
   content: string
   createdAt: string
+  /** The database replaced banned words with `*` (D50). */
+  masked: boolean
+  /** Partial address of the commenter, only present on masked comments (e.g. `113.161.*.*`). */
+  clientHint: string | null
+}
+
+/** Full commenter details, readable by admins and the post's author (D50). */
+export interface CommentClient {
+  client: string
+  userAgent: string | null
+  blocked: boolean
+}
+
+export interface BlockedClient {
+  client: string
+  reason: string | null
+  blockedAt: string
+  commentCount: number
 }
 
 export type CommentStatus = 'APPROVED' | 'REJECTED'

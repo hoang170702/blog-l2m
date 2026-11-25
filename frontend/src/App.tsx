@@ -29,6 +29,9 @@ const PostEditorPage = lazy(() =>
 const PostsPage = lazy(() =>
   import('./pages/admin/PostsPage').then((m) => ({ default: m.PostsPage })),
 )
+const ModerationPage = lazy(() =>
+  import('./pages/admin/ModerationPage').then((m) => ({ default: m.ModerationPage })),
+)
 const MembersPage = lazy(() =>
   import('./pages/admin/MembersPage').then((m) => ({ default: m.MembersPage })),
 )
@@ -98,6 +101,7 @@ export const routes: RouteObject[] = [
               { path: 'tags', element: page(<TermsPage key="tags" kind="tags" />) },
               { path: 'reports', element: page(<ReportsPage />) },
               { path: 'members', element: page(<MembersPage />) },
+              { path: 'moderation', element: page(<ModerationPage />) },
             ],
           },
         ],

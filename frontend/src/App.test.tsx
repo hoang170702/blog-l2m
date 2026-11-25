@@ -69,6 +69,8 @@ const post: PostDetail = {
 const comment: Comment = {
   id: 'c1',
   parentId: null,
+  masked: false,
+  clientHint: null,
   authorName: 'Ann',
   content: 'Bài hay',
   createdAt: '2026-11-23T01:00:00.000Z',
@@ -156,6 +158,42 @@ describe('App', () => {
         content: 'Cảm ơn',
         parentId: 'c1',
       }),
+    )
+  })
+
+  it('warns under a comment whose words were masked and shows the partial address', async () => {
+    api.currentUser.mockResolvedValue(null)
+    api.post.mockResolvedValue(post)
+    api.comments.mockResolvedValue([
+      comment,
+      {
+        ...comment,
+        id: 'c9',
+        authorName: 'Bob',
+        content: 'Bài này *** quá',
+        masked: true,
+        clientHint: '113.161.*.*',
+      },
+    ])
+    api.related.mockResolvedValue([])
+    api.recordView.mockResolvedValue(undefined)
+    renderWithProviders(<App />, { route: '/posts/hello-world' })
+    const warning = await screen.findByText(/đã che từ ngữ không phù hợp/)
+    expect(warning).toHaveTextContent('IP 113.161.*.*')
+    expect(screen.getAllByText(/đã che từ ngữ/)).toHaveLength(1)
+  })
+
+  it('tells a blocked commenter why the comment was refused', async () => {
+    const { ApiError } = await import('./api/client')
+    api.submitComment.mockRejectedValue(new ApiError(403, 'Địa chỉ của bạn đã bị chặn bình luận.'))
+    openPost()
+    const user = userEvent.setup()
+    const form = (await screen.findByRole('heading', { name: 'Để lại bình luận' })).closest('form')!
+    await user.type(within(form).getByLabelText('Tên của bạn'), 'Bob')
+    await user.type(within(form).getByLabelText('Nội dung bình luận'), 'again')
+    await user.click(within(form).getByRole('button', { name: 'Gửi bình luận' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'Địa chỉ của bạn đã bị chặn bình luận.',
     )
   })
 

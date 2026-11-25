@@ -11,6 +11,8 @@ import type {
   AdminComment,
   AdminPost,
   Author,
+  BlockedClient,
+  CommentClient,
   Comment,
   CommentStatus,
   DashboardStats,
@@ -79,6 +81,8 @@ interface PostRow {
 interface CommentRow {
   id: string
   parent_id: string | null
+  masked: boolean
+  client_hint: string | null
   author_name: string
   content: string
   created_at: string
@@ -96,7 +100,7 @@ const DETAIL = `${SUMMARY}, content`
 const ADMIN_POST = `${DETAIL}, status, created_at, updated_at, comments(count)`
 // `post` is an inner join so authors can filter the moderation queue to their own posts.
 const ADMIN_COMMENT =
-  'id, parent_id, author_name, content, status, created_at, post_id, post:posts!inner(title, slug, author_id)'
+  'id, parent_id, author_name, content, status, created_at, masked, client_hint, post_id, post:posts!inner(title, slug, author_id)'
 const REPORT =
   'id, reason, status, created_at, post:posts(id, title, slug), comment:comments(id, content, author_name, status, post:posts(title, slug))'
 
@@ -149,7 +153,7 @@ function toAdminPost(row: PostRow): AdminPost {
 
 type PublicCommentRow = Pick<
   CommentRow,
-  'id' | 'parent_id' | 'author_name' | 'content' | 'created_at'
+  'id' | 'parent_id' | 'author_name' | 'content' | 'created_at' | 'masked' | 'client_hint'
 >
 
 function toComment(row: PublicCommentRow): Comment {
@@ -159,6 +163,8 @@ function toComment(row: PublicCommentRow): Comment {
     authorName: row.author_name,
     content: row.content,
     createdAt: row.created_at,
+    masked: row.masked,
+    clientHint: row.client_hint,
   }
 }
 
@@ -447,7 +453,9 @@ export const publicApi = {
     const rows = unwrap(
       await supabase
         .from('comments')
-        .select('id, parent_id, author_name, content, created_at, posts!inner(slug)')
+        .select(
+          'id, parent_id, author_name, content, created_at, masked, client_hint, posts!inner(slug)',
+        )
         .eq('posts.slug', slug)
         .eq('status', 'approved')
         .order('created_at', { ascending: true }),
@@ -674,6 +682,62 @@ export const adminApi = {
         .single(),
     ) as CommentRow
     return toAdminComment(row)
+  },
+
+  /** Full address and device of a commenter; empty for anyone but admins and the post's author (D50). */
+  async commentClient(id: string): Promise<CommentClient | null> {
+    const rows = unwrap(await supabase.rpc('comment_client', { p_comment: id })) as {
+      client: string
+      user_agent: string | null
+      blocked: boolean
+    }[]
+    const row = rows[0]
+    return row ? { client: row.client, userAgent: row.user_agent, blocked: row.blocked } : null
+  },
+
+  async blockCommentClient(commentId: string, blocked: boolean, reason?: string): Promise<void> {
+    unwrap(
+      await supabase.rpc('admin_block_client', {
+        p_comment: commentId,
+        p_blocked: blocked,
+        p_reason: reason ?? null,
+      }),
+    )
+  },
+
+  async unblockClient(client: string): Promise<void> {
+    unwrap(await supabase.rpc('admin_unblock_client', { p_client: client }))
+  },
+
+  async blockedClients(): Promise<BlockedClient[]> {
+    const rows = unwrap(await supabase.rpc('admin_list_blocked_clients')) as {
+      client: string
+      reason: string | null
+      blocked_at: string
+      comment_count: number
+    }[]
+    return rows.map((row) => ({
+      client: row.client,
+      reason: row.reason,
+      blockedAt: row.blocked_at,
+      commentCount: Number(row.comment_count),
+    }))
+  },
+
+  async bannedWords(): Promise<string[]> {
+    const rows = unwrap(await supabase.from('banned_words').select('word').order('word')) as {
+      word: string
+    }[]
+    return rows.map((row) => row.word)
+  },
+
+  /** Stored accent-folded and lower case, the way the database matches them. */
+  async addBannedWord(word: string): Promise<void> {
+    unwrap(await supabase.from('banned_words').insert({ word: foldVi(word.trim()) }))
+  },
+
+  async removeBannedWord(word: string): Promise<void> {
+    unwrap(await supabase.from('banned_words').delete().eq('word', word))
   },
 
   async deleteComment(id: string): Promise<void> {
