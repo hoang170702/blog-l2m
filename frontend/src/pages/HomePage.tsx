@@ -35,7 +35,7 @@ export function HomePage({ mode = 'all' }: { mode?: Mode }) {
     enabled: mode === 'author' && Boolean(id),
   })
 
-  const { data, error, isPending } = useQuery({
+  const { data, error, isPending, refetch } = useQuery({
     queryKey: ['posts', filters],
     queryFn: () => publicApi.posts(filters),
     placeholderData: keepPreviousData,
@@ -100,7 +100,7 @@ export function HomePage({ mode = 'all' }: { mode?: Mode }) {
       {mode === 'series' && series.isSuccess && !series.data ? null : isPending ? (
         <Spinner />
       ) : error ? (
-        <ErrorMessage error={error} />
+        <ErrorMessage error={error} onRetry={() => void refetch()} />
       ) : data.items.length === 0 ? (
         <Empty>
           {mode === 'following'
@@ -109,8 +109,8 @@ export function HomePage({ mode = 'all' }: { mode?: Mode }) {
         </Empty>
       ) : (
         <>
-          {/* One column, newest first; every post gets the same card. */}
-          <div className="mx-auto flex max-w-4xl flex-col gap-6">
+          {/* Newest first; two columns from lg so a 1280px screen shows four posts (UI review row 8). */}
+          <div className="grid gap-6 lg:grid-cols-2">
             {data.items.map((post) => (
               <PostCard key={post.id} post={post} />
             ))}
@@ -124,7 +124,7 @@ export function HomePage({ mode = 'all' }: { mode?: Mode }) {
 
 function Hero() {
   return (
-    <div className="relative mb-12 overflow-hidden rounded-3xl border border-line bg-surface px-6 py-14 text-center sm:px-12">
+    <div className="relative mb-10 overflow-hidden rounded-3xl bg-surface px-6 py-10 text-center sm:px-12">
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -top-24 -left-24 h-72 w-72 rounded-full bg-primary/20 blur-3xl"
@@ -137,7 +137,7 @@ function Hero() {
         Nhật ký &amp; chia sẻ
       </p>
       <h1 className="relative mx-auto max-w-3xl text-4xl leading-tight font-extrabold md:text-5xl">
-        Viết lại những điều <span className="text-gradient">đáng nhớ</span>
+        Viết lại những điều <span className="text-primary">đáng nhớ</span>
       </h1>
       <p className="relative mx-auto mt-4 max-w-xl text-lg text-muted">
         Những câu chuyện, ghi chép và trải nghiệm — được kể theo cách gần gũi nhất.

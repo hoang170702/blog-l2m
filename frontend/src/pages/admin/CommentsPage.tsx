@@ -67,7 +67,7 @@ export function CommentsPage() {
       {comments.isPending ? (
         <Spinner />
       ) : comments.error ? (
-        <ErrorMessage error={comments.error} />
+        <ErrorMessage error={comments.error} onRetry={() => void comments.refetch()} />
       ) : comments.data.items.length === 0 ? (
         <Empty>Không có bình luận.</Empty>
       ) : (
@@ -80,7 +80,7 @@ export function CommentsPage() {
                   {formatDate(comment.createdAt)} · {statusLabels[comment.status]} ·{' '}
                   {comment.masked && (
                     <span
-                      className="font-semibold text-amber-700"
+                      className="font-semibold text-warning"
                       title="Hệ thống đã che từ ngữ không phù hợp"
                     >
                       Đã che ·{' '}
@@ -94,21 +94,21 @@ export function CommentsPage() {
                 <div className="mt-3 flex gap-3 text-sm">
                   {comment.status === 'REJECTED' ? (
                     <button
-                      className="text-green-700 hover:underline"
+                      className="text-success hover:underline"
                       onClick={() => moderate.mutate({ id: comment.id, next: 'APPROVED' })}
                     >
                       Hiện lại
                     </button>
                   ) : (
                     <button
-                      className="text-amber-700 hover:underline"
+                      className="text-warning hover:underline"
                       onClick={() => moderate.mutate({ id: comment.id, next: 'REJECTED' })}
                     >
                       Ẩn
                     </button>
                   )}
                   <button
-                    className="text-red-600 hover:underline"
+                    className="text-danger hover:underline"
                     onClick={() => confirm('Xoá bình luận này?') && remove.mutate(comment.id)}
                   >
                     Xoá
@@ -154,7 +154,7 @@ function CommentClientInfo({ commentId, isAdmin }: { commentId: string; isAdmin:
     )
   }
   if (info.isPending) return <span className="text-muted">…</span>
-  if (info.error) return <span className="text-red-600">{info.error.message}</span>
+  if (info.error) return <span className="text-danger">{info.error.message}</span>
   if (!info.data) return <span className="text-muted">Không có thông tin.</span>
   const device = describeUserAgent(info.data.userAgent)
   return (
@@ -163,14 +163,14 @@ function CommentClientInfo({ commentId, isAdmin }: { commentId: string; isAdmin:
       {device && <span title={info.data.userAgent ?? ''}>· {device}</span>}
       {isAdmin && info.data.client !== 'unknown' && (
         <button
-          className={`font-semibold hover:underline ${info.data.blocked ? 'text-green-700' : 'text-red-600'}`}
+          className={`font-semibold hover:underline ${info.data.blocked ? 'text-success' : 'text-danger'}`}
           disabled={block.isPending}
           onClick={() => block.mutate(!info.data!.blocked)}
         >
           {info.data.blocked ? 'Bỏ chặn IP' : 'Chặn IP'}
         </button>
       )}
-      {block.error && <span className="text-red-600">{block.error.message}</span>}
+      {block.error && <span className="text-danger">{block.error.message}</span>}
     </span>
   )
 }

@@ -51,7 +51,7 @@ export function MembersPage() {
       {members.isPending ? (
         <Spinner />
       ) : members.error ? (
-        <ErrorMessage error={members.error} />
+        <ErrorMessage error={members.error} onRetry={() => void members.refetch()} />
       ) : members.data.items.length === 0 ? (
         <Empty>Không có thành viên.</Empty>
       ) : (
@@ -74,7 +74,7 @@ export function MembersPage() {
                     bài
                   </p>
                   {member.suspendedAt && (
-                    <p className="text-xs font-semibold text-red-600">
+                    <p className="text-xs font-semibold text-danger">
                       Bị khoá từ {formatDate(member.suspendedAt)}
                       {member.suspendedReason && <> · {member.suspendedReason}</>}
                     </p>
@@ -83,14 +83,14 @@ export function MembersPage() {
                 {!member.isAdmin &&
                   (member.suspendedAt ? (
                     <button
-                      className="text-sm font-semibold text-green-700 hover:underline"
+                      className="text-sm font-semibold text-success hover:underline"
                       onClick={() => suspend.mutate({ id: member.id, on: false })}
                     >
                       Mở khoá
                     </button>
                   ) : (
                     <button
-                      className="text-sm font-semibold text-red-600 hover:underline"
+                      className="text-sm font-semibold text-danger hover:underline"
                       onClick={() => {
                         const reason = prompt(`Lý do khoá ${member.name}?`)
                         if (reason !== null) {

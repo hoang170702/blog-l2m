@@ -25,6 +25,14 @@
   --color-ink: var(--c-ink);
   --color-muted: var(--c-muted);
   --color-line: var(--c-line);
+  /* Status colors (error, warning, success) so both themes stay readable (UI review A040). */
+  --color-danger: var(--c-danger);
+  --color-danger-soft: var(--c-danger-soft);
+  --color-warning: var(--c-warning);
+  --color-warning-soft: var(--c-warning-soft);
+  --color-success: var(--c-success);
+  --color-success-soft: var(--c-success-soft);
+  --color-on-primary: var(--c-on-primary);
 
   --shadow-card: var(--s-card);
   --shadow-glow: var(--s-glow);
@@ -46,6 +54,14 @@
   --c-ink: #2b1a14;
   --c-muted: #786660;
   --c-line: #efe6dc;
+  --c-danger: #b42318;
+  --c-danger-soft: #fdeceb;
+  --c-warning: #8a5300;
+  --c-warning-soft: #fff4dc;
+  --c-success: #1b7f4a;
+  --c-success-soft: #e6f6ec;
+  /* Text on a primary-colored surface (buttons, pill hover). */
+  --c-on-primary: #ffffff;
 
   --s-card: 0 1px 3px 0 rgb(43 26 20 / 0.06), 0 1px 2px -1px rgb(43 26 20 / 0.06);
   --s-glow: 0 20px 40px -16px rgb(200 16 46 / 0.3);
@@ -66,6 +82,14 @@
   --c-ink: #f4ece6;
   --c-muted: #a8968e;
   --c-line: #342a25;
+  --c-danger: #ff8f86;
+  --c-danger-soft: #3d1a19;
+  --c-warning: #ffd27a;
+  --c-warning-soft: #3a2d12;
+  --c-success: #6fd49b;
+  --c-success-soft: #163224;
+  /* White on the dark-theme red measured 3.58:1 (UI review row 6); dark ink reads at 5.2:1. */
+  --c-on-primary: #1a0b0e;
 
   --s-card: 0 1px 3px 0 rgb(0 0 0 / 0.4), 0 1px 2px -1px rgb(0 0 0 / 0.4);
   --s-glow: 0 20px 40px -16px rgb(240 74 99 / 0.35);
@@ -81,15 +105,21 @@
   h3 {
     @apply font-display tracking-tight;
   }
+
+  /* One focus style for every control instead of each browser's default (UI review row 12). */
+  :focus-visible {
+    outline: 2px solid var(--c-primary);
+    outline-offset: 2px;
+  }
 }
 
 @layer components {
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-glow transition hover:bg-primary-hover disabled:opacity-50 disabled:shadow-none;
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-on-primary shadow-glow transition hover:bg-primary-hover disabled:opacity-50 disabled:shadow-none;
   }
 
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 rounded-full border border-line bg-surface px-5 py-2.5 text-sm font-semibold text-ink transition hover:border-primary hover:text-primary;
+    @apply inline-flex items-center justify-center gap-2 rounded-full border border-line bg-surface px-5 py-2.5 text-sm font-semibold text-ink transition hover:bg-primary-soft hover:text-primary-dark;
   }
 
   .input {
@@ -101,7 +131,14 @@
   }
 
   .pill {
-    @apply inline-flex items-center rounded-full bg-primary-soft px-3 py-1 text-xs font-semibold text-primary-dark transition hover:bg-primary hover:text-white;
+    @apply inline-flex items-center rounded-full bg-primary-soft px-3 py-1 text-xs font-semibold text-primary-dark transition hover:bg-primary hover:text-on-primary;
+  }
+
+  /* Meta rows ("Kể chuyện · tác giả · ngày"): the dot hangs on the item before it, so a wrapped
+     line never starts with "·" (UI review row 3). The trailing action group (`ml-auto`) gets none. */
+  .meta > :has(+ :not(.ml-auto))::after {
+    content: '·';
+    margin-left: 0.5rem;
   }
 
   .text-gradient {

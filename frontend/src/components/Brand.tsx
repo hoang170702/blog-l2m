@@ -7,13 +7,13 @@ export function Brand({ compact = false }: { compact?: boolean }) {
       {!compact && (
         <span
           aria-hidden="true"
-          className="grid h-9 w-9 place-items-center rounded-xl bg-gradient-to-br from-primary to-secondary font-display text-[0.7rem] font-black tracking-tight text-white shadow-glow"
+          className="grid h-9 w-9 place-items-center rounded-xl bg-primary font-display text-[0.7rem] font-black tracking-tight text-on-primary shadow-glow"
         >
           L2M
         </span>
       )}
       <span className="font-display text-xl font-extrabold">
-        <span className="text-gradient">L2M</span> <span className="text-ink">Blog</span>
+        <span className="text-primary">L2M</span> <span className="text-ink">Blog</span>
       </span>
     </span>
   )

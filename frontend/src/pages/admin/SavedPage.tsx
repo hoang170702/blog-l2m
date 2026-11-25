@@ -23,7 +23,7 @@ export function SavedPage() {
       {posts.isPending ? (
         <Spinner />
       ) : posts.error ? (
-        <ErrorMessage error={posts.error} />
+        <ErrorMessage error={posts.error} onRetry={() => void posts.refetch()} />
       ) : posts.data.items.length === 0 ? (
         <Empty>
           Chưa có bài nào. Bấm “🔖 Lưu” dưới một bài viết để đọc lại sau.{' '}

@@ -96,7 +96,8 @@ export function PostEditorPage() {
   useDocumentTitle(id ? 'Sửa bài viết' : 'Viết bài mới')
 
   if (id && existing.isPending) return <Spinner />
-  if (existing.error) return <ErrorMessage error={existing.error} />
+  if (existing.error)
+    return <ErrorMessage error={existing.error} onRetry={() => void existing.refetch()} />
   // Only the author edits a post (D38); admins see others' posts here but cannot change them.
   if (existing.data && existing.data.authorId !== user?.id) {
     return <Empty>Bạn không có quyền sửa bài này. Chỉ tác giả mới sửa được.</Empty>
@@ -505,7 +506,7 @@ function PostForm({
             {coverUrl && (
               <button
                 type="button"
-                className="text-sm font-semibold text-red-600 hover:underline"
+                className="text-sm font-semibold text-danger hover:underline"
                 onClick={() => update('coverImagePath', '')}
               >
                 Bỏ ảnh bìa
@@ -548,7 +549,7 @@ function PostForm({
                       }
                       className={`rounded-full px-3 py-1 text-xs font-semibold transition ${
                         on
-                          ? 'bg-primary text-white'
+                          ? 'bg-primary text-on-primary'
                           : 'bg-primary-soft text-primary-dark hover:bg-primary/20'
                       }`}
                     >

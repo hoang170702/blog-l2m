@@ -26,7 +26,7 @@ export function ReportButton({
         const reason = prompt('Lý do báo cáo (spam, xúc phạm, vi phạm bản quyền…)')?.trim()
         if (reason) report.mutate(reason.slice(0, 500))
       }}
-      className="text-xs font-semibold text-muted transition hover:text-red-600"
+      className="text-xs font-semibold text-muted transition hover:text-danger"
     >
       ⚑ {label}
     </button>

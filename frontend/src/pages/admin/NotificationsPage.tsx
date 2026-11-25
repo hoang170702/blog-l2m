@@ -26,7 +26,7 @@ export function NotificationsPage() {
       {list.isPending ? (
         <Spinner />
       ) : list.error ? (
-        <ErrorMessage error={list.error} />
+        <ErrorMessage error={list.error} onRetry={() => void list.refetch()} />
       ) : list.data.length === 0 ? (
         <Empty>Chưa có thông báo nào.</Empty>
       ) : (

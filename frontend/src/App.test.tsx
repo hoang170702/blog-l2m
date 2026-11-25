@@ -132,8 +132,8 @@ describe('App', () => {
 
   it('shows reading time, views, a table of contents and counts the view once', async () => {
     openPost()
-    expect(await screen.findByText('· 1 phút đọc')).toBeInTheDocument()
-    expect(screen.getByText('· 12 lượt xem')).toBeInTheDocument()
+    expect(await screen.findByText('1 phút đọc')).toBeInTheDocument()
+    expect(screen.getByText('12 lượt xem')).toBeInTheDocument()
     const toc = await screen.findByRole('navigation', { name: 'Mục lục' })
     expect(within(toc).getByRole('link', { name: 'Kết luận' })).toHaveAttribute(
       'href',

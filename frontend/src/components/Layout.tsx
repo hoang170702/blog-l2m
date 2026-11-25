@@ -21,7 +21,8 @@ export function Layout() {
   return (
     <div className="flex min-h-screen flex-col">
       <header className="sticky top-0 z-20 border-b border-line/70 bg-canvas/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-4 py-3 sm:px-6">
+        {/* Below lg the search box is its own full-width row on purpose (UI review row 2). */}
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-3 sm:px-6">
           <Link to="/" aria-label="L2M Blog — trang chủ">
             <Brand />
           </Link>
@@ -30,7 +31,7 @@ export function Layout() {
               to="/"
               end
               className={({ isActive }) =>
-                `rounded-full px-3 py-1.5 transition ${isActive ? 'bg-primary-soft text-primary-dark' : 'text-muted hover:text-ink'}`
+                `rounded-full px-3 py-1.5 transition ${isActive ? 'bg-primary/10 text-primary-dark' : 'text-muted hover:text-ink'}`
               }
             >
               Trang chủ
@@ -39,14 +40,14 @@ export function Layout() {
               <NavLink
                 to="/following"
                 className={({ isActive }) =>
-                  `rounded-full px-3 py-1.5 transition ${isActive ? 'bg-primary-soft text-primary-dark' : 'text-muted hover:text-ink'}`
+                  `rounded-full px-3 py-1.5 transition ${isActive ? 'bg-primary/10 text-primary-dark' : 'text-muted hover:text-ink'}`
                 }
               >
                 Đang theo dõi
               </NavLink>
             )}
           </nav>
-          <div className="order-2 ml-auto flex items-center gap-2 sm:order-3 sm:ml-0">
+          <div className="order-2 ml-auto flex items-center gap-2 lg:order-3 lg:ml-0">
             <Link to={user ? '/write' : '/login'} className="btn-primary py-2">
               ✍️ <span className="hidden sm:inline">Viết bài</span>
             </Link>
@@ -56,7 +57,7 @@ export function Layout() {
           <form
             onSubmit={onSearch}
             role="search"
-            className="order-3 w-full sm:order-2 sm:ml-auto sm:w-64"
+            className="order-3 w-full lg:order-2 lg:ml-auto lg:w-64"
           >
             <input
               type="search"
